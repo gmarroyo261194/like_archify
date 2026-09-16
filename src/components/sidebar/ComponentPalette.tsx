@@ -48,13 +48,17 @@ const PALETTES_BY_TYPE: Record<DiagramType, { title: string; boundaryName: strin
   },
   sequence: {
     title: 'Sequence Lifelines',
-    boundaryName: '+ Add Sequence Domain Scope',
+    boundaryName: '+ Add Interaction Frame / Phase',
     items: [
-      { label: 'Browser / Mobile Client', role: 'participant', shape: 'participant', icon: 'Globe', iconComp: Globe, tech: 'SPA / Mobile App', subtitle: 'Initiating user actor' },
-      { label: 'API Ingress Gateway', role: 'participant', shape: 'participant', icon: 'Layers', iconComp: Layers, tech: 'Kong / Envoy', subtitle: 'Reverse proxy router' },
-      { label: 'Identity / Auth Server', role: 'participant', shape: 'participant', icon: 'Shield', iconComp: Shield, tech: 'OAuth2 / OIDC IdP', subtitle: 'Token issuer' },
-      { label: 'Domain Core Service', role: 'participant', shape: 'participant', icon: 'Server', iconComp: Server, tech: 'Go / gRPC Service', subtitle: 'Business API worker' },
-      { label: 'Persistence Database', role: 'participant', shape: 'participant', icon: 'Database', iconComp: Database, tech: 'PostgreSQL Database', subtitle: 'State store' }
+      { label: 'Client / User Actor', role: 'client', shape: 'participant', icon: 'Globe', iconComp: Globe, tech: 'SPA / Mobile App', subtitle: 'Initiating user actor' },
+      { label: 'API Ingress Gateway', role: 'gateway', shape: 'participant', icon: 'Layers', iconComp: Layers, tech: 'Kong / Envoy', subtitle: 'Reverse proxy router' },
+      { label: 'Domain Microservice', role: 'service', shape: 'participant', icon: 'Server', iconComp: Server, tech: 'Go / Node / Java', subtitle: 'Business API worker' },
+      { label: 'Identity / Auth Server', role: 'security', shape: 'participant', icon: 'Shield', iconComp: Shield, tech: 'OAuth2 / OIDC IdP', subtitle: 'Token issuer' },
+      { label: 'In-Memory Cache', role: 'cache', shape: 'participant', icon: 'Activity', iconComp: Activity, tech: 'Redis / Memcached', subtitle: 'Low-latency query cache' },
+      { label: 'Persistence Database', role: 'database', shape: 'participant', icon: 'Database', iconComp: Database, tech: 'PostgreSQL / Mongo', subtitle: 'State & transaction store' },
+      { label: 'Event Broker / Queue', role: 'queue', shape: 'participant', icon: 'Network', iconComp: Network, tech: 'Kafka / SQS', subtitle: 'Async message broker' },
+      { label: 'AI Agent / Model', role: 'ai', shape: 'participant', icon: 'Bot', iconComp: Bot, tech: 'Gemini / Claude / OpenAI', subtitle: 'Reasoning & inference' },
+      { label: 'External SaaS / Webhook', role: 'external', shape: 'participant', icon: 'Cloud', iconComp: Cloud, tech: 'Stripe / SendGrid', subtitle: 'Third-party API' }
     ]
   },
   dataflow: {

@@ -28,27 +28,39 @@ SCHEMA REQUIREMENTS:
 - schema_version: "2.0.0"
 - diagram_type: one of ["architecture", "workflow", "sequence", "dataflow", "lifecycle"]
 - meta: { title, description, version: "1.0.0", preset: "signal-flow", theme: "dark", updated_at }
-- boundaries: array of { id, label, type ("vpc" | "zone" | "subnet"), position: { x, y }, size: { width, height } }
+- boundaries: array of { id, label, type ("vpc" | "zone" | "subnet" | "frame" | "interaction"), position: { x, y }, size: { width, height } }
 - nodes: array of {
-    id: unique string (e.g. "auth_svc", "db_primary"),
+    id: unique string (e.g. "client", "api_gateway", "auth_service", "billing_db"),
     label: human readable title,
-    subtitle: tech or brief role (e.g. "Node.js / Express", "PostgreSQL 16"),
+    subtitle: tech or brief role (e.g. "React Client", "Golang API", "PostgreSQL"),
     role: one of ["client", "gateway", "service", "worker", "database", "cache", "queue", "ai", "storage", "security", "external", "decision", "event", "state", "stage", "participant"],
     shape: one of ["box", "diamond", "circle", "pill", "participant", "state"],
     tech: primary technology tag,
     icon: valid icon name or role name,
     boundary_id?: string linking to boundaries id,
-    position: { x: number, y: number } (will be auto-layouted, provide sensible base numbers)
+    position: { x: number, y: number },
+    metadata?: {
+      lifelineHeight?: string,
+      activations?: string (JSON stringified array of { top: number, height: number, color?: string })
+    }
   }
 - edges: array of {
     id: unique string (e.g. "e1", "e2"),
     source: source node id,
     target: target node id,
-    label: action or payload (e.g. "GET /api/v1/auth", "Publish Event"),
-    protocol: protocol (e.g. "HTTPS", "gRPC", "AMQP", "WebSocket", "TCP"),
-    edge_type: "solid" | "dashed" | "return" | "conditional",
+    label: action or payload (e.g. "1. POST /order", "2. verify payment", "200 JSON OK"),
+    protocol: protocol (e.g. "HTTPS", "gRPC", "SQL", "return", "security", "async", "request"),
+    edge_type: "solid" | "dashed" | "return" | "conditional" | "security" | "async" | "request",
     animated: boolean
   }
+
+SEQUENCE DIAGRAM SPECIFIC RULES:
+- When diagram_type is "sequence":
+  - Nodes MUST have shape: "participant" and role matching their function ("client", "gateway", "service", "security", "cache", "database", "queue", "ai", etc.).
+  - Distribute participant nodes horizontally at y: 40 with x incrementing by 160px (e.g. x: 50, x: 210, x: 370, x: 530...).
+  - Provide metadata.activations JSON array on active participants showing when they are processing.
+  - Use boundaries with type: "frame" to group logical phases (e.g. "Phase 1: Validation", "Phase 2: Execution", "Phase 3: Telemetry & Return").
+  - Use semantic edge_type ("request" for calls, "return" for replies, "security" for auth checks, "async" for events/queues).
 
 CRITICAL: Return ONLY valid, parseable JSON matching this structure. No markdown fences, no explanatory text.`;
 
@@ -129,6 +141,72 @@ export function generateHeuristicDiagram(
   const hasAI = p.includes('ai') || p.includes('llm') || p.includes('rag') || p.includes('openai') || p.includes('vector');
   const hasStorage = p.includes('s3') || p.includes('bucket') || p.includes('storage') || p.includes('blob');
   const hasWorker = p.includes('worker') || p.includes('job') || p.includes('cron') || hasQueue;
+
+  if (diagramType === 'sequence') {
+    const participants = [
+      { id: 'actor_client', label: 'Client App', subtitle: 'User Interface', role: 'client' as NodeRole, shape: 'participant' as const, icon: 'Globe', position: { x: 50, y: 40 }, metadata: { lifelineHeight: '560', activations: '[]' } },
+      { id: 'actor_api', label: 'API Gateway', subtitle: 'Backend Controller', role: 'service' as NodeRole, shape: 'participant' as const, icon: 'Server', position: { x: 220, y: 40 }, metadata: { lifelineHeight: '560', activations: JSON.stringify([{ top: 120, height: 380, color: '#2dd4bf' }]) } },
+    ];
+
+    let xPos = 390;
+    if (hasAuth) {
+      participants.push({ id: 'actor_auth', label: 'Auth Provider', subtitle: 'JWT / OAuth', role: 'security', shape: 'participant', icon: 'Shield', position: { x: xPos, y: 40 }, metadata: { lifelineHeight: '560', activations: JSON.stringify([{ top: 150, height: 50, color: '#f43f5e' }]) } });
+      xPos += 170;
+    }
+    if (hasRedis) {
+      participants.push({ id: 'actor_cache', label: 'Redis Cache', subtitle: 'Key-Value Cache', role: 'cache', shape: 'participant', icon: 'Database', position: { x: xPos, y: 40 }, metadata: { lifelineHeight: '560', activations: JSON.stringify([{ top: 230, height: 50, color: '#c084fc' }]) } });
+      xPos += 170;
+    }
+    if (hasDB || !hasQueue) {
+      participants.push({ id: 'actor_db', label: 'Database', subtitle: 'ACID Storage', role: 'database', shape: 'participant', icon: 'Database', position: { x: xPos, y: 40 }, metadata: { lifelineHeight: '560', activations: JSON.stringify([{ top: 310, height: 60, color: '#a78bfa' }]) } });
+      xPos += 170;
+    }
+    if (hasQueue) {
+      participants.push({ id: 'actor_queue', label: 'Event Broker', subtitle: 'Async Queue / PubSub', role: 'queue', shape: 'participant', icon: 'Network', position: { x: xPos, y: 40 }, metadata: { lifelineHeight: '560', activations: JSON.stringify([{ top: 400, height: 50, color: '#fb923c' }]) } });
+      xPos += 170;
+    }
+
+    const seqEdges: any[] = [
+      { id: 'sq_e1', source: 'actor_client', target: 'actor_api', label: '1. Initiate Request', protocol: 'request', edge_type: 'request', animated: true }
+    ];
+
+    if (hasAuth) {
+      seqEdges.push({ id: 'sq_auth_req', source: 'actor_api', target: 'actor_auth', label: '2. Verify Token', protocol: 'security', edge_type: 'security', animated: true });
+      seqEdges.push({ id: 'sq_auth_res', source: 'actor_auth', target: 'actor_api', label: '3. Token Valid (OK)', protocol: 'return', edge_type: 'return', animated: false });
+    }
+    if (hasRedis) {
+      seqEdges.push({ id: 'sq_cache_req', source: 'actor_api', target: 'actor_cache', label: '4. Check Cache', protocol: 'request', edge_type: 'request', animated: true });
+      seqEdges.push({ id: 'sq_cache_res', source: 'actor_cache', target: 'actor_api', label: '5. Cache Miss', protocol: 'return', edge_type: 'return', animated: false });
+    }
+    if (hasDB || !hasQueue) {
+      seqEdges.push({ id: 'sq_db_req', source: 'actor_api', target: 'actor_db', label: '6. Query Transaction Data', protocol: 'request', edge_type: 'request', animated: true });
+      seqEdges.push({ id: 'sq_db_res', source: 'actor_db', target: 'actor_api', label: '7. Return Record Set', protocol: 'return', edge_type: 'return', animated: false });
+    }
+    if (hasQueue) {
+      seqEdges.push({ id: 'sq_q_emit', source: 'actor_api', target: 'actor_queue', label: '8. Publish Async Event', protocol: 'async', edge_type: 'async', animated: true });
+    }
+
+    seqEdges.push({ id: 'sq_res_client', source: 'actor_api', target: 'actor_client', label: '9. 200 OK Response', protocol: 'return', edge_type: 'return', animated: false });
+
+    return {
+      schema_version: '2.0.0',
+      diagram_type: 'sequence',
+      meta: {
+        title: title || 'Dynamic Interaction Sequence',
+        description: `Sequence generated for: ${prompt}`,
+        version: '1.0.0',
+        preset: 'signal-flow',
+        theme: 'dark',
+        updated_at: new Date().toISOString()
+      },
+      boundaries: [
+        { id: 'f_req', label: 'Phase 1: Ingress & Validation', type: 'frame', position: { x: 30, y: 130 }, size: { width: Math.max(xPos, 800), height: 160 } },
+        { id: 'f_exec', label: 'Phase 2: Data & Processing', type: 'frame', position: { x: 30, y: 300 }, size: { width: Math.max(xPos, 800), height: 180 } }
+      ],
+      nodes: participants,
+      edges: seqEdges
+    };
+  }
 
   if (diagramType === 'workflow') {
     return {
