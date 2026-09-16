@@ -131,7 +131,10 @@ export const ProjectsModal: React.FC<Props> = ({
   const saveRename = (p: ArchifyProject) => {
     if (editingTitle.trim()) {
       p.title = editingTitle.trim();
-      p.ir.meta.title = editingTitle.trim();
+      if (p.diagrams && p.diagrams.length > 0) {
+        const activeDiag = p.diagrams.find(d => d.id === p.active_diagram_id) || p.diagrams[0];
+        if (activeDiag) activeDiag.title = editingTitle.trim();
+      }
       p.updated_at = new Date().toISOString();
       const all = getAllProjects();
       const idx = all.findIndex(item => item.id === p.id);
@@ -318,8 +321,13 @@ export const ProjectsModal: React.FC<Props> = ({
           {filtered.map((project) => {
             const isActive = project.id === activeProjectId;
             const isEditing = editingId === project.id;
-            const nodeCount = project.ir.nodes?.length || 0;
-            const edgeCount = project.ir.edges?.length || 0;
+            const diagrams = project.diagrams || [];
+            const activeDiag = diagrams.find(d => d.id === project.active_diagram_id) || diagrams[0];
+            const primaryType = activeDiag?.diagram_type || project.diagram_type || 'architecture';
+            
+            const totalNodes = diagrams.reduce((acc, d) => acc + (d.ir?.nodes?.length || 0), 0);
+            const totalEdges = diagrams.reduce((acc, d) => acc + (d.ir?.edges?.length || 0), 0);
+
             const formattedDate = new Date(project.updated_at).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
@@ -337,12 +345,17 @@ export const ProjectsModal: React.FC<Props> = ({
                     : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/60'
                 }`}
               >
-                {/* Top Row: Type Badge + Active Indicator */}
+                {/* Top Row: Type Badge + Diagram Count + Active Indicator */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-800 text-sky-400 border border-slate-700">
-                      {project.diagram_type}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-800 text-sky-400 border border-slate-700">
+                        {primaryType}
+                      </span>
+                      <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-800/60 text-slate-400 border border-slate-700/60">
+                        {diagrams.length} View{diagrams.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
 
                     {isActive ? (
                       <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
@@ -403,10 +416,10 @@ export const ProjectsModal: React.FC<Props> = ({
                   <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
                     <span className="flex items-center gap-1">
                       <Layers className="w-3.5 h-3.5 text-sky-400" />
-                      {nodeCount} nodes
+                      {totalNodes} nodes
                     </span>
                     <span>·</span>
-                    <span>{edgeCount} connections</span>
+                    <span>{totalEdges} connections</span>
                   </div>
 
                   <div className="flex items-center gap-1">

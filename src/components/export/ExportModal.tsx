@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { X, Download, FileCode, Image, Copy, Check, Share2, Sparkles } from 'lucide-react';
+import { X, Download, FileCode, Image, Copy, Check, Share2, Sparkles, FolderArchive, Layers } from 'lucide-react';
 import { ArchifyDiagramIR } from '../../types/archify';
-import { generateStandaloneHTML } from '../../lib/exporter/htmlExporter';
+import { ArchifyProject } from '../../types/project';
+import { generateStandaloneHTML, generateProjectBundleHTML } from '../../lib/exporter/htmlExporter';
 import { generateCleanSVG } from '../../lib/exporter/svgExporter';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   diagramIR: ArchifyDiagramIR;
+  project?: ArchifyProject;
   onExportShareCard: () => void;
 }
 
@@ -15,19 +17,31 @@ export const ExportModal: React.FC<Props> = ({
   isOpen,
   onClose,
   diagramIR,
+  project,
   onExportShareCard
 }) => {
   const [copied, setCopied] = useState(false);
+  const [exportScope, setExportScope] = useState<'active' | 'project'>('active');
 
   if (!isOpen) return null;
 
   const downloadHTML = () => {
-    const html = generateStandaloneHTML(diagramIR);
+    let html = '';
+    let fileName = '';
+
+    if (exportScope === 'project' && project) {
+      html = generateProjectBundleHTML(project);
+      fileName = `${project.title.toLowerCase().replace(/\s+/g, '-')}-project-bundle.html`;
+    } else {
+      html = generateStandaloneHTML(diagramIR);
+      fileName = `${diagramIR.meta.title.toLowerCase().replace(/\s+/g, '-')}.html`;
+    }
+
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${diagramIR.meta.title.toLowerCase().replace(/\s+/g, '-')}.html`;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -44,18 +58,30 @@ export const ExportModal: React.FC<Props> = ({
   };
 
   const downloadJSON = () => {
-    const jsonStr = JSON.stringify(diagramIR, null, 2);
+    let jsonStr = '';
+    let fileName = '';
+
+    if (exportScope === 'project' && project) {
+      jsonStr = JSON.stringify(project, null, 2);
+      fileName = `${project.title.toLowerCase().replace(/\s+/g, '-')}.project.json`;
+    } else {
+      jsonStr = JSON.stringify(diagramIR, null, 2);
+      fileName = `${diagramIR.meta.title.toLowerCase().replace(/\s+/g, '-')}.archify.json`;
+    }
+
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${diagramIR.meta.title.toLowerCase().replace(/\s+/g, '-')}.archify.json`;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const copyHTML = () => {
-    const html = generateStandaloneHTML(diagramIR);
+    const html = exportScope === 'project' && project
+      ? generateProjectBundleHTML(project)
+      : generateStandaloneHTML(diagramIR);
     navigator.clipboard.writeText(html);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -63,7 +89,7 @@ export const ExportModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl bg-[#111726] border border-[#1e293b] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full max-w-xl bg-[#111726] border border-[#1e293b] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="p-4 border-b border-[#1e293b] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -72,7 +98,7 @@ export const ExportModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-100">
-                Export Archify Diagram
+                Export System Architecture
               </h3>
               <p className="text-xs text-slate-400">
                 Select format for standalone viewing, sharing, or agent integration
@@ -87,6 +113,37 @@ export const ExportModal: React.FC<Props> = ({
           </button>
         </div>
 
+        {/* Scope Selector Tabs (Active View vs Project Bundle) */}
+        {project && (project.diagrams?.length || 0) > 1 && (
+          <div className="px-5 pt-3.5 pb-1 flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Export Scope:</span>
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+              <button
+                onClick={() => setExportScope('active')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  exportScope === 'active'
+                    ? 'bg-sky-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Active View ({diagramIR.meta.title})</span>
+              </button>
+              <button
+                onClick={() => setExportScope('project')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  exportScope === 'project'
+                    ? 'bg-sky-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <FolderArchive className="w-3.5 h-3.5" />
+                <span>All {project.diagrams.length} Views (Project Bundle)</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Options Grid */}
         <div className="p-5 grid grid-cols-2 gap-3.5">
           {/* Option 1: Standalone HTML */}
@@ -97,14 +154,16 @@ export const ExportModal: React.FC<Props> = ({
                   <FileCode className="w-4 h-4" />
                 </span>
                 <span className="text-[10px] uppercase font-bold text-sky-400 bg-sky-400/10 px-2 py-0.5 rounded">
-                  Recommended
+                  {exportScope === 'project' ? 'Multi-Tab Suite' : 'Recommended'}
                 </span>
               </div>
               <h4 className="text-sm font-bold text-slate-100 mb-1">
-                Standalone HTML Viewer
+                {exportScope === 'project' ? 'Multi-Tab HTML Bundle' : 'Standalone HTML Viewer'}
               </h4>
               <p className="text-xs text-slate-400">
-                Self-contained interactive file with finite motion, dark/light themes, zoom, and reach tracing.
+                {exportScope === 'project'
+                  ? 'All diagrams bundled in a single file with an embedded tab switcher, search, and tracing.'
+                  : 'Self-contained interactive file with finite motion, dark/light themes, zoom, and reach tracing.'}
               </p>
             </div>
             <div className="mt-4 flex gap-2">
@@ -182,10 +241,12 @@ export const ExportModal: React.FC<Props> = ({
                 <Share2 className="w-4 h-4" />
               </span>
               <h4 className="text-sm font-bold text-slate-100 mb-1">
-                Schema v2 JSON IR
+                {exportScope === 'project' ? 'Multi-Diagram Project JSON' : 'Schema v2 JSON IR'}
               </h4>
               <p className="text-xs text-slate-400">
-                Raw typed JSON intermediate representation compatible with Archify CLI & Agent skills.
+                {exportScope === 'project'
+                  ? 'Complete project JSON bundle with all diagram views and metadata.'
+                  : 'Raw typed JSON intermediate representation compatible with Archify CLI & Agent skills.'}
               </p>
             </div>
             <div className="mt-4">
@@ -202,3 +263,4 @@ export const ExportModal: React.FC<Props> = ({
     </div>
   );
 };
+

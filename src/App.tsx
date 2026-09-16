@@ -12,11 +12,13 @@ import confetti from 'canvas-confetti';
 
 import { 
   ArchifyDiagramIR, ArchifyNodeData, ArchifyEdgeData, ArchifyBoundaryData,
-  PresetType, ThemeType, NodeRole 
+  PresetType, ThemeType, NodeRole, DiagramType 
 } from './types/archify';
-import { ArchifyProject } from './types/project';
+import { ArchifyProject, ProjectDiagram } from './types/project';
 
 import { TopToolbar } from './components/toolbar/TopToolbar';
+import { DiagramTabBar } from './components/toolbar/DiagramTabBar';
+import { NewDiagramModal } from './components/toolbar/NewDiagramModal';
 import { ComponentPalette } from './components/sidebar/ComponentPalette';
 import { NodeInspector } from './components/inspector/NodeInspector';
 import { EdgeInspector } from './components/inspector/EdgeInspector';
@@ -29,7 +31,9 @@ import { ProjectsModal } from './components/projects/ProjectsModal';
 
 import { 
   getAllProjects, saveProject, 
-  getActiveProjectId, setActiveProjectId 
+  getActiveProjectId, setActiveProjectId,
+  addDiagramToProject, duplicateDiagram,
+  deleteDiagram, updateDiagramTitle 
 } from './lib/storage/projectStorage';
 import { 
   TEMPLATE_WEB_APP, TEMPLATE_WORKFLOW, TEMPLATE_SEQUENCE, 
@@ -101,7 +105,7 @@ function canvasToIR(
   nodes: Node[],
   edges: Edge[],
   meta: ArchifyDiagramIR['meta'],
-  diagramType: ArchifyDiagramIR['diagram_type'] = 'architecture'
+  diagramType: DiagramType = 'architecture'
 ): ArchifyDiagramIR {
   const boundaries = nodes
     .filter(n => n.type === 'boundaryNode')
@@ -164,8 +168,13 @@ export function App() {
     return found || all[0];
   });
 
-  const [meta, setMeta] = useState(activeProject.ir.meta);
-  const initial = useMemo(() => irToCanvas(activeProject.ir), [activeProject.id]);
+  const activeDiagramId = activeProject.active_diagram_id || activeProject.diagrams[0]?.id;
+  const activeDiagram = useMemo(() => {
+    return activeProject.diagrams.find(d => d.id === activeDiagramId) || activeProject.diagrams[0];
+  }, [activeProject, activeDiagramId]);
+
+  const [meta, setMeta] = useState(activeDiagram.ir.meta);
+  const initial = useMemo(() => irToCanvas(activeDiagram.ir), [activeProject.id, activeDiagram.id]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
@@ -173,10 +182,11 @@ export function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
-  const [preset, setPreset] = useState<PresetType>(activeProject.ir.meta.preset || 'signal-flow');
-  const [theme, setTheme] = useState<ThemeType>(activeProject.ir.meta.theme || 'dark');
+  const [preset, setPreset] = useState<PresetType>(activeDiagram.ir.meta.preset || 'signal-flow');
+  const [theme, setTheme] = useState<ThemeType>(activeDiagram.ir.meta.theme || 'dark');
 
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
+  const [isNewDiagramModalOpen, setIsNewDiagramModalOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTracingActive, setIsTracingActive] = useState(false);
@@ -186,8 +196,8 @@ export function App() {
   const isInitialMount = useRef(true);
 
   const currentIR = useMemo(() => {
-    return canvasToIR(nodes, edges, { ...meta, preset, theme }, activeProject.diagram_type || 'architecture');
-  }, [nodes, edges, meta, preset, theme, activeProject.diagram_type]);
+    return canvasToIR(nodes, edges, { ...meta, preset, theme }, activeDiagram.diagram_type);
+  }, [nodes, edges, meta, preset, theme, activeDiagram.diagram_type]);
 
   // Real-Time Auto-Save to LocalStorage
   useEffect(() => {
@@ -198,18 +208,31 @@ export function App() {
 
     setIsSaving(true);
     const timeout = setTimeout(() => {
+      const updatedDiagrams = activeProject.diagrams.map(d => {
+        if (d.id === activeDiagram.id) {
+          return {
+            ...d,
+            title: meta.title,
+            updated_at: new Date().toISOString(),
+            ir: currentIR
+          };
+        }
+        return d;
+      });
+
       const updatedProject: ArchifyProject = {
         ...activeProject,
-        title: meta.title,
+        title: activeProject.title,
         updated_at: new Date().toISOString(),
-        ir: currentIR
+        diagrams: updatedDiagrams
       };
+
       saveProject(updatedProject);
       setIsSaving(false);
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [nodes, edges, meta, preset, theme, activeProject.id, activeProject.diagram_type]);
+  }, [nodes, edges, meta, preset, theme, activeProject.id, activeDiagram.id]);
 
   const selectedNode = useMemo(() => {
     const found = nodes.find(n => n.id === selectedNodeId);
@@ -251,15 +274,18 @@ export function App() {
     setIsTracingActive(false);
   }, [setNodes, setEdges]);
 
+  // Project Switching
   const handleSelectProject = useCallback((project: ArchifyProject) => {
     setActiveProjectId(project.id);
     setActiveProject(project);
-    setMeta(project.ir.meta);
-    setPreset(project.ir.meta.preset || 'signal-flow');
-    setTheme(project.ir.meta.theme || 'dark');
-    document.documentElement.classList.toggle('light', project.ir.meta.theme === 'light');
 
-    const { nodes: n, edges: e } = irToCanvas(project.ir);
+    const firstDiag = project.diagrams.find(d => d.id === project.active_diagram_id) || project.diagrams[0];
+    setMeta(firstDiag.ir.meta);
+    setPreset(firstDiag.ir.meta.preset || 'signal-flow');
+    setTheme(firstDiag.ir.meta.theme || 'dark');
+    document.documentElement.classList.toggle('light', firstDiag.ir.meta.theme === 'light');
+
+    const { nodes: n, edges: e } = irToCanvas(firstDiag.ir);
     setNodes(n);
     setEdges(e);
     setSelectedNodeId(null);
@@ -268,9 +294,121 @@ export function App() {
     confetti({ particleCount: 40, spread: 50, origin: { y: 0.1 } });
   }, [setNodes, setEdges, handleClearTrace]);
 
+  // Diagram Tab Switching
+  const handleSelectDiagram = useCallback((diagramId: string) => {
+    // 1. Commit current canvas to existing active diagram in project state
+    const currentUpdatedIR = canvasToIR(nodes, edges, { ...meta, preset, theme }, activeDiagram.diagram_type);
+    const updatedDiagrams = activeProject.diagrams.map(d => {
+      if (d.id === activeDiagram.id) {
+        return {
+          ...d,
+          title: meta.title,
+          updated_at: new Date().toISOString(),
+          ir: currentUpdatedIR
+        };
+      }
+      return d;
+    });
+
+    const target = activeProject.diagrams.find(d => d.id === diagramId);
+    if (!target) return;
+
+    const nextProject: ArchifyProject = {
+      ...activeProject,
+      active_diagram_id: diagramId,
+      diagrams: updatedDiagrams
+    };
+    saveProject(nextProject);
+    setActiveProject(nextProject);
+
+    // 2. Load target diagram onto canvas
+    setMeta(target.ir.meta);
+    setPreset(target.ir.meta.preset || 'signal-flow');
+    setTheme(target.ir.meta.theme || 'dark');
+    document.documentElement.classList.toggle('light', target.ir.meta.theme === 'light');
+
+    const { nodes: n, edges: e } = irToCanvas(target.ir);
+    setNodes(n);
+    setEdges(e);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    handleClearTrace();
+  }, [nodes, edges, meta, preset, theme, activeDiagram, activeProject, setNodes, setEdges, handleClearTrace]);
+
+  // Diagram Tab Creation
+  const handleAddDiagram = useCallback((title: string, type: DiagramType, templateIR?: ArchifyDiagramIR) => {
+    const res = addDiagramToProject(activeProject.id, title, type, templateIR);
+    if (!res) return;
+
+    const { project, newDiagram } = res;
+    setActiveProject(project);
+    setMeta(newDiagram.ir.meta);
+    setPreset(newDiagram.ir.meta.preset || 'signal-flow');
+    setTheme(newDiagram.ir.meta.theme || 'dark');
+    document.documentElement.classList.toggle('light', newDiagram.ir.meta.theme === 'light');
+
+    const { nodes: n, edges: e } = irToCanvas(newDiagram.ir);
+    setNodes(n);
+    setEdges(e);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    handleClearTrace();
+    confetti({ particleCount: 45, spread: 55, origin: { y: 0.1 } });
+  }, [activeProject.id, setNodes, setEdges, handleClearTrace]);
+
+  // Diagram Tab Duplication
+  const handleDuplicateDiagram = useCallback((diagramId: string) => {
+    const res = duplicateDiagram(activeProject.id, diagramId);
+    if (!res) return;
+
+    const { project, duplicated } = res;
+    setActiveProject(project);
+    setMeta(duplicated.ir.meta);
+    setPreset(duplicated.ir.meta.preset || 'signal-flow');
+
+    const { nodes: n, edges: e } = irToCanvas(duplicated.ir);
+    setNodes(n);
+    setEdges(e);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    handleClearTrace();
+  }, [activeProject.id, setNodes, setEdges, handleClearTrace]);
+
+  // Diagram Tab Deletion
+  const handleDeleteDiagram = useCallback((diagramId: string) => {
+    const res = deleteDiagram(activeProject.id, diagramId);
+    if (!res) return;
+
+    const { project, activeDiagram: nextActive } = res;
+    setActiveProject(project);
+    setMeta(nextActive.ir.meta);
+    setPreset(nextActive.ir.meta.preset || 'signal-flow');
+
+    const { nodes: n, edges: e } = irToCanvas(nextActive.ir);
+    setNodes(n);
+    setEdges(e);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    handleClearTrace();
+  }, [activeProject.id, setNodes, setEdges, handleClearTrace]);
+
+  // Diagram Tab Rename
+  const handleRenameDiagram = useCallback((diagramId: string, newTitle: string) => {
+    const updated = updateDiagramTitle(activeProject.id, diagramId, newTitle);
+    if (updated) {
+      setActiveProject({ ...updated });
+      if (diagramId === activeDiagram.id) {
+        setMeta(m => ({ ...m, title: newTitle }));
+      }
+    }
+  }, [activeProject.id, activeDiagram.id]);
+
   const handleUpdateProjectTitle = useCallback((newTitle: string) => {
-    setMeta(m => ({ ...m, title: newTitle }));
-    setActiveProject(p => ({ ...p, title: newTitle }));
+    setActiveProject(p => {
+      const updated = { ...p, title: newTitle };
+      saveProject(updated);
+      return updated;
+    });
   }, []);
 
   const onConnect = useCallback((params: Connection) => {
@@ -325,7 +463,7 @@ export function App() {
       position: { x: 100, y: 100 },
       data: {
         id,
-        label: 'New Secure VPC / Zone',
+        label: 'New Secure Scope / Zone',
         type: 'vpc'
       },
       style: {
@@ -548,9 +686,10 @@ export function App() {
     document.documentElement.classList.toggle('light', newTheme === 'light');
   }, [theme]);
 
+  // Load Template inside current active diagram tab
   const handleLoadTemplate = useCallback((key: 'web' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle') => {
     let tpl = TEMPLATE_WEB_APP;
-    let newDiagramType: ArchifyDiagramIR['diagram_type'] = 'architecture';
+    let newDiagramType: DiagramType = 'architecture';
 
     if (key === 'web') {
       tpl = TEMPLATE_WEB_APP;
@@ -570,12 +709,27 @@ export function App() {
     }
 
     const { nodes: newNodes, edges: newEdges } = irToCanvas(tpl);
-    setActiveProject(p => ({
-      ...p,
-      title: tpl.meta.title,
-      diagram_type: newDiagramType,
-      ir: tpl
-    }));
+    
+    // Update active diagram within project
+    setActiveProject(p => {
+      const updated = {
+        ...p,
+        diagrams: p.diagrams.map(d => {
+          if (d.id === activeDiagram.id) {
+            return {
+              ...d,
+              title: tpl.meta.title,
+              diagram_type: newDiagramType,
+              ir: tpl
+            };
+          }
+          return d;
+        })
+      };
+      saveProject(updated);
+      return updated;
+    });
+
     setMeta(tpl.meta);
     setPreset(tpl.meta.preset);
     setNodes(newNodes);
@@ -584,10 +738,10 @@ export function App() {
     setSelectedEdgeId(null);
     handleClearTrace();
     confetti({ particleCount: 50, spread: 60, origin: { y: 0.1 } });
-  }, [setNodes, setEdges, handleClearTrace]);
+  }, [activeDiagram.id, setNodes, setEdges, handleClearTrace]);
 
   const handleResetCanvas = useCallback(() => {
-    if (window.confirm('Clear current diagram?')) {
+    if (window.confirm('Clear current diagram view?')) {
       setNodes([]);
       setEdges([]);
       setSelectedNodeId(null);
@@ -614,7 +768,7 @@ export function App() {
     <div className={`flex flex-col h-screen w-screen overflow-hidden ${theme === 'light' ? 'light' : ''}`}>
       {/* Top Navigation & Actions Bar */}
       <TopToolbar
-        projectTitle={meta.title}
+        projectTitle={activeProject.title}
         onUpdateProjectTitle={handleUpdateProjectTitle}
         preset={preset}
         onChangePreset={handleChangePreset}
@@ -625,15 +779,26 @@ export function App() {
         onOpenExportModal={() => setIsExportModalOpen(true)}
         onLoadTemplate={handleLoadTemplate}
         onResetCanvas={handleResetCanvas}
-        diagramType={activeProject.diagram_type || currentIR.diagram_type}
+        diagramType={activeDiagram.diagram_type}
         isSaving={isSaving}
+      />
+
+      {/* Sub-Header Multi-Diagram Tab Strip */}
+      <DiagramTabBar
+        diagrams={activeProject.diagrams}
+        activeDiagramId={activeDiagram.id}
+        onSelectDiagram={handleSelectDiagram}
+        onAddDiagramClick={() => setIsNewDiagramModalOpen(true)}
+        onDuplicateDiagram={handleDuplicateDiagram}
+        onDeleteDiagram={handleDeleteDiagram}
+        onRenameDiagram={handleRenameDiagram}
       />
 
       {/* Main Studio Workspace */}
       <div className="flex-1 flex overflow-hidden relative" ref={containerRef}>
         {/* Left Component Palette */}
         <ComponentPalette
-          currentDiagramType={activeProject.diagram_type || currentIR.diagram_type}
+          currentDiagramType={activeDiagram.diagram_type}
           onAddNode={handleAddNode}
           onAddBoundary={handleAddBoundary}
         />
@@ -710,6 +875,13 @@ export function App() {
         onSelectProject={handleSelectProject}
       />
 
+      {/* Add New Diagram Tab Modal */}
+      <NewDiagramModal
+        isOpen={isNewDiagramModalOpen}
+        onClose={() => setIsNewDiagramModalOpen(false)}
+        onAddDiagram={handleAddDiagram}
+      />
+
       {/* JSON IR Editor Modal */}
       <JsonEditorModal
         isOpen={isJsonModalOpen}
@@ -729,6 +901,7 @@ export function App() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         diagramIR={currentIR}
+        project={activeProject}
         onExportShareCard={handleExportShareCard}
       />
     </div>
@@ -736,3 +909,4 @@ export function App() {
 }
 
 export default App;
+
