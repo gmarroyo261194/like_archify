@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #0a0d14;
+    --panel-bg: #111726;
+    --panel-border: #1e293b;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.25);
+  }
+
+  .light {
+    --bg-main: #f8fafc;
+    --panel-bg: #ffffff;
+    --panel-border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-muted: #64748b;
+    --accent: #0284c7;
+    --accent-glow: rgba(2, 132, 199, 0.2);
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+  }
+}
+
+/* React Flow Custom Theme Overrides */
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #38bdf8;
+  border: 2px solid #0f172a;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.4);
+  background: #00f2fe;
+}
+
+/* Signal Flow Particles */
+@keyframes signalPacket {
+  0% {
+    offset-distance: 0%;
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0.2;
+  }
+}
+
+.animate-signal {
+  stroke-dasharray: 6 6;
+  animation: flowSignal 1s linear infinite;
+}
+
+@keyframes flowSignal {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}

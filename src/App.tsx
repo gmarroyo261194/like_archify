@@ -1,0 +1,649 @@
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import {
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Node,
+  Edge
+} from '@xyflow/react';
+import { toPng } from 'html-to-image';
+import confetti from 'canvas-confetti';
+
+import { 
+  ArchifyDiagramIR, ArchifyNodeData, ArchifyEdgeData, 
+  PresetType, ThemeType, NodeRole 
+} from './types/archify';
+import { ArchifyProject } from './types/project';
+
+import { TopToolbar } from './components/toolbar/TopToolbar';
+import { ComponentPalette } from './components/sidebar/ComponentPalette';
+import { NodeInspector } from './components/inspector/NodeInspector';
+import { EdgeInspector } from './components/inspector/EdgeInspector';
+import { RouteInspectorBar } from './components/tracing/RouteInspectorBar';
+import { DiagramCanvas } from './components/canvas/DiagramCanvas';
+import { ExportModal } from './components/export/ExportModal';
+import { JsonEditorModal } from './components/code/JsonEditorModal';
+import { ProjectsModal } from './components/projects/ProjectsModal';
+
+import { 
+  getAllProjects, saveProject, 
+  getActiveProjectId, setActiveProjectId 
+} from './lib/storage/projectStorage';
+import { TEMPLATE_WEB_APP, TEMPLATE_AI_AGENT, TEMPLATE_MICROSERVICES } from './lib/templates/defaultTemplates';
+
+function irToCanvas(ir: ArchifyDiagramIR): { nodes: Node[]; edges: Edge[] } {
+  const boundaryNodes: Node[] = (ir.boundaries || []).map(b => ({
+    id: b.id,
+    type: 'boundaryNode',
+    position: b.position,
+    data: {
+      id: b.id,
+      label: b.label,
+      type: b.type
+    },
+    style: {
+      width: b.size.width,
+      height: b.size.height,
+      zIndex: -1
+    }
+  }));
+
+  const appNodes: Node[] = (ir.nodes || []).map(n => ({
+    id: n.id,
+    type: 'archifyNode',
+    position: n.position,
+    data: {
+      id: n.id,
+      label: n.label,
+      subtitle: n.subtitle,
+      role: n.role,
+      icon: n.icon || 'Server',
+      tech: n.tech,
+      port: n.port,
+      status: n.status || 'healthy',
+      gitUrl: n.git_url,
+      metadata: n.metadata,
+      preset: ir.meta.preset,
+      theme: ir.meta.theme
+    }
+  }));
+
+  const appEdges: Edge[] = (ir.edges || []).map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    type: 'archifyEdge',
+    data: {
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: e.label,
+      protocol: e.protocol,
+      animated: e.animated !== false,
+      latency: e.latency
+    }
+  }));
+
+  return { nodes: [...boundaryNodes, ...appNodes], edges: appEdges };
+}
+
+function canvasToIR(
+  nodes: Node[],
+  edges: Edge[],
+  meta: ArchifyDiagramIR['meta']
+): ArchifyDiagramIR {
+  const boundaries = nodes
+    .filter(n => n.type === 'boundaryNode')
+    .map(n => ({
+      id: n.id,
+      label: (n.data?.label as string) || 'Boundary',
+      type: (n.data?.type as string) || 'vpc',
+      position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
+      size: { 
+        width: Math.round((n.style?.width as number) || 400), 
+        height: Math.round((n.style?.height as number) || 300) 
+      }
+    }));
+
+  const appNodes = nodes
+    .filter(n => n.type === 'archifyNode')
+    .map(n => ({
+      id: n.id,
+      label: (n.data?.label as string) || 'Service',
+      subtitle: n.data?.subtitle as string | undefined,
+      role: ((n.data?.role as string) || 'service') as NodeRole,
+      tech: n.data?.tech as string | undefined,
+      icon: n.data?.icon as string | undefined,
+      port: n.data?.port as string | number | undefined,
+      status: n.data?.status as string | undefined,
+      git_url: n.data?.gitUrl as string | undefined,
+      position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }
+    }));
+
+  const appEdges = edges.map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    label: e.data?.label as string | undefined,
+    protocol: e.data?.protocol as string | undefined,
+    animated: e.data?.animated !== false,
+    latency: e.data?.latency as string | undefined
+  }));
+
+  return {
+    schema_version: '2.0.0',
+    diagram_type: 'architecture',
+    meta: {
+      ...meta,
+      updated_at: new Date().toISOString()
+    },
+    boundaries,
+    nodes: appNodes,
+    edges: appEdges
+  };
+}
+
+export function App() {
+  const [activeProject, setActiveProject] = useState<ArchifyProject>(() => {
+    const all = getAllProjects();
+    const activeId = getActiveProjectId();
+    const found = all.find(p => p.id === activeId);
+    return found || all[0];
+  });
+
+  const [meta, setMeta] = useState(activeProject.ir.meta);
+  const initial = useMemo(() => irToCanvas(activeProject.ir), [activeProject.id]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
+
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
+  const [preset, setPreset] = useState<PresetType>(activeProject.ir.meta.preset || 'signal-flow');
+  const [theme, setTheme] = useState<ThemeType>(activeProject.ir.meta.theme || 'dark');
+
+  const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
+  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isTracingActive, setIsTracingActive] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
+
+  const currentIR = useMemo(() => {
+    return canvasToIR(nodes, edges, { ...meta, preset, theme });
+  }, [nodes, edges, meta, preset, theme]);
+
+  // Real-Time Auto-Save to LocalStorage
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    setIsSaving(true);
+    const timeout = setTimeout(() => {
+      const updatedProject: ArchifyProject = {
+        ...activeProject,
+        title: meta.title,
+        updated_at: new Date().toISOString(),
+        ir: currentIR
+      };
+      saveProject(updatedProject);
+      setIsSaving(false);
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [nodes, edges, meta, preset, theme, activeProject.id]);
+
+  const selectedNode = useMemo(() => {
+    const found = nodes.find(n => n.id === selectedNodeId);
+    if (found && found.type === 'archifyNode') {
+      return found as Node<ArchifyNodeData>;
+    }
+    return null;
+  }, [nodes, selectedNodeId]);
+
+  const selectedEdge = useMemo(() => {
+    return (edges.find(e => e.id === selectedEdgeId) as Edge<ArchifyEdgeData>) || null;
+  }, [edges, selectedEdgeId]);
+
+  const handleSelectProject = useCallback((project: ArchifyProject) => {
+    setActiveProjectId(project.id);
+    setActiveProject(project);
+    setMeta(project.ir.meta);
+    setPreset(project.ir.meta.preset || 'signal-flow');
+    setTheme(project.ir.meta.theme || 'dark');
+    document.documentElement.classList.toggle('light', project.ir.meta.theme === 'light');
+
+    const { nodes: n, edges: e } = irToCanvas(project.ir);
+    setNodes(n);
+    setEdges(e);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    handleClearTrace();
+    confetti({ particleCount: 40, spread: 50, origin: { y: 0.1 } });
+  }, [setNodes, setEdges]);
+
+  const handleUpdateProjectTitle = useCallback((newTitle: string) => {
+    setMeta(m => ({ ...m, title: newTitle }));
+    setActiveProject(p => ({ ...p, title: newTitle }));
+  }, []);
+
+  const onConnect = useCallback((params: Connection) => {
+    const newEdge: Edge = {
+      ...params,
+      id: `e-${Date.now()}`,
+      type: 'archifyEdge',
+      data: {
+        id: `e-${Date.now()}`,
+        source: params.source,
+        target: params.target,
+        protocol: 'HTTP/2',
+        label: 'Flow',
+        animated: true,
+        latency: '5ms'
+      }
+    };
+    setEdges(eds => addEdge(newEdge, eds));
+  }, [setEdges]);
+
+  const handleAddNode = useCallback((item: any) => {
+    const id = `node-${Date.now()}`;
+    const newNode: Node = {
+      id,
+      type: 'archifyNode',
+      position: { x: 350 + Math.random() * 100, y: 200 + Math.random() * 100 },
+      data: {
+        id,
+        label: item.label,
+        subtitle: item.subtitle,
+        role: item.role,
+        icon: item.icon,
+        tech: item.tech,
+        status: 'healthy',
+        preset,
+        theme
+      }
+    };
+    setNodes(nds => [...nds, newNode]);
+    setSelectedNodeId(id);
+    setSelectedEdgeId(null);
+  }, [preset, theme, setNodes]);
+
+  const handleAddBoundary = useCallback(() => {
+    const id = `b-${Date.now()}`;
+    const newBoundary: Node = {
+      id,
+      type: 'boundaryNode',
+      position: { x: 100, y: 100 },
+      data: {
+        id,
+        label: 'New Secure VPC / Zone',
+        type: 'vpc'
+      },
+      style: {
+        width: 400,
+        height: 350,
+        zIndex: -1
+      }
+    };
+    setNodes(nds => [newBoundary, ...nds]);
+    setSelectedNodeId(id);
+    setSelectedEdgeId(null);
+  }, [setNodes]);
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    const dataStr = event.dataTransfer.getData('application/archify-node');
+    if (!dataStr) return;
+
+    const item = JSON.parse(dataStr);
+    const bounds = containerRef.current?.getBoundingClientRect();
+    const x = bounds ? event.clientX - bounds.left : 200;
+    const y = bounds ? event.clientY - bounds.top : 200;
+
+    const id = `node-${Date.now()}`;
+    const newNode: Node = {
+      id,
+      type: 'archifyNode',
+      position: { x, y },
+      data: {
+        id,
+        label: item.label,
+        subtitle: item.subtitle,
+        role: item.role,
+        icon: item.icon,
+        tech: item.tech,
+        status: 'healthy',
+        preset,
+        theme
+      }
+    };
+    setNodes(nds => [...nds, newNode]);
+    setSelectedNodeId(id);
+    setSelectedEdgeId(null);
+  }, [preset, theme, setNodes]);
+
+  const handleUpdateNode = useCallback((id: string, updates: Partial<ArchifyNodeData>) => {
+    setNodes(nds => nds.map(n => {
+      if (n.id === id) {
+        return { ...n, data: { ...n.data, ...updates } };
+      }
+      return n;
+    }));
+  }, [setNodes]);
+
+  const handleDeleteNode = useCallback((id: string) => {
+    setNodes(nds => nds.filter(n => n.id !== id));
+    setEdges(eds => eds.filter(e => e.source !== id && e.target !== id));
+    setSelectedNodeId(null);
+  }, [setNodes, setEdges]);
+
+  const handleUpdateEdge = useCallback((id: string, updates: Partial<ArchifyEdgeData>) => {
+    setEdges(eds => eds.map(e => {
+      if (e.id === id) {
+        return { ...e, data: { ...(e.data || {}), ...updates } };
+      }
+      return e;
+    }));
+  }, [setEdges]);
+
+  const handleDeleteEdge = useCallback((id: string) => {
+    setEdges(eds => eds.filter(e => e.id !== id));
+    setSelectedEdgeId(null);
+  }, [setEdges]);
+
+  const handleTraceReach = useCallback((nodeId: string, direction: 'upstream' | 'downstream') => {
+    const reachable = new Set<string>([nodeId]);
+    const edgesToHighlight = new Set<string>();
+
+    if (direction === 'downstream') {
+      edges.forEach(e => {
+        if (reachable.has(e.source)) {
+          reachable.add(e.target);
+          edgesToHighlight.add(e.id);
+        }
+      });
+    } else {
+      edges.forEach(e => {
+        if (reachable.has(e.target)) {
+          reachable.add(e.source);
+          edgesToHighlight.add(e.id);
+        }
+      });
+    }
+
+    setNodes(nds => nds.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        isHighlighted: reachable.has(n.id),
+        isDimmed: !reachable.has(n.id) && n.type === 'archifyNode'
+      }
+    })));
+
+    setEdges(eds => eds.map(e => ({
+      ...e,
+      data: {
+        ...(e.data || {}),
+        isHighlighted: edgesToHighlight.has(e.id),
+        isDimmed: !edgesToHighlight.has(e.id)
+      }
+    })));
+
+    setIsTracingActive(true);
+  }, [edges, setNodes, setEdges]);
+
+  const handleTraceRoute = useCallback((sourceId: string, targetId: string) => {
+    const queue: string[][] = [[sourceId]];
+    const visited = new Set<string>([sourceId]);
+    let foundPath: string[] | null = null;
+
+    while (queue.length > 0) {
+      const path = queue.shift()!;
+      const curr = path[path.length - 1];
+
+      if (curr === targetId) {
+        foundPath = path;
+        break;
+      }
+
+      const neighbors = edges
+        .filter(e => e.source === curr)
+        .map(e => e.target);
+
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          queue.push([...path, neighbor]);
+        }
+      }
+    }
+
+    if (!foundPath) {
+      alert('No direct path found between selected nodes.');
+      return;
+    }
+
+    const pathNodes = new Set(foundPath);
+    const pathEdges = new Set<string>();
+
+    for (let i = 0; i < foundPath.length - 1; i++) {
+      const u = foundPath[i];
+      const v = foundPath[i + 1];
+      const match = edges.find(e => e.source === u && e.target === v);
+      if (match) pathEdges.add(match.id);
+    }
+
+    setNodes(nds => nds.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        isHighlighted: pathNodes.has(n.id),
+        isDimmed: !pathNodes.has(n.id) && n.type === 'archifyNode'
+      }
+    })));
+
+    setEdges(eds => eds.map(e => ({
+      ...e,
+      data: {
+        ...(e.data || {}),
+        isHighlighted: pathEdges.has(e.id),
+        isDimmed: !pathEdges.has(e.id)
+      }
+    })));
+
+    setIsTracingActive(true);
+  }, [edges, setNodes, setEdges]);
+
+  const handleClearTrace = useCallback(() => {
+    setNodes(nds => nds.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        isHighlighted: false,
+        isDimmed: false
+      }
+    })));
+    setEdges(eds => eds.map(e => ({
+      ...e,
+      data: {
+        ...(e.data || {}),
+        isHighlighted: false,
+        isDimmed: false
+      }
+    })));
+    setIsTracingActive(false);
+  }, [setNodes, setEdges]);
+
+  const handleChangePreset = useCallback((newPreset: PresetType) => {
+    setPreset(newPreset);
+    setNodes(nds => nds.map(n => ({
+      ...n,
+      data: { ...n.data, preset: newPreset }
+    })));
+  }, [setNodes]);
+
+  const handleToggleTheme = useCallback(() => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.classList.toggle('light', newTheme === 'light');
+  }, [theme]);
+
+  const handleLoadTemplate = useCallback((key: 'web' | 'ai' | 'micro') => {
+    const tpl = key === 'web' ? TEMPLATE_WEB_APP : key === 'ai' ? TEMPLATE_AI_AGENT : TEMPLATE_MICROSERVICES;
+    const { nodes: newNodes, edges: newEdges } = irToCanvas(tpl);
+    setMeta(tpl.meta);
+    setPreset(tpl.meta.preset);
+    setNodes(newNodes);
+    setEdges(newEdges);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    handleClearTrace();
+    confetti({ particleCount: 50, spread: 60, origin: { y: 0.1 } });
+  }, [setNodes, setEdges, handleClearTrace]);
+
+  const handleResetCanvas = useCallback(() => {
+    if (window.confirm('Clear current diagram?')) {
+      setNodes([]);
+      setEdges([]);
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+    }
+  }, [setNodes, setEdges]);
+
+  const handleExportShareCard = useCallback(() => {
+    if (!containerRef.current) return;
+    toPng(containerRef.current, {
+      width: 1200,
+      height: 630,
+      backgroundColor: theme === 'dark' ? '#0a0d14' : '#f8fafc'
+    }).then((dataUrl) => {
+      const link = document.createElement('a');
+      link.download = `${meta.title.toLowerCase().replace(/\s+/g, '-')}-share-card.png`;
+      link.href = dataUrl;
+      link.click();
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+    });
+  }, [meta.title, theme]);
+
+  return (
+    <div className={`flex flex-col h-screen w-screen overflow-hidden ${theme === 'light' ? 'light' : ''}`}>
+      {/* Top Navigation & Actions Bar */}
+      <TopToolbar
+        projectTitle={meta.title}
+        onUpdateProjectTitle={handleUpdateProjectTitle}
+        preset={preset}
+        onChangePreset={handleChangePreset}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+        onOpenProjectsModal={() => setIsProjectsModalOpen(true)}
+        onOpenJsonModal={() => setIsJsonModalOpen(true)}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
+        onLoadTemplate={handleLoadTemplate}
+        onResetCanvas={handleResetCanvas}
+        isSaving={isSaving}
+      />
+
+      {/* Main Studio Workspace */}
+      <div className="flex-1 flex overflow-hidden relative" ref={containerRef}>
+        {/* Left Component Palette */}
+        <ComponentPalette
+          onAddNode={handleAddNode}
+          onAddBoundary={handleAddBoundary}
+        />
+
+        {/* Central Visual Canvas */}
+        <DiagramCanvas
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={(_, node) => {
+            setSelectedNodeId(node.id);
+            setSelectedEdgeId(null);
+          }}
+          onEdgeClick={(_, edge) => {
+            setSelectedEdgeId(edge.id);
+            setSelectedNodeId(null);
+          }}
+          onPaneClick={() => {
+            setSelectedNodeId(null);
+            setSelectedEdgeId(null);
+          }}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          preset={preset}
+        />
+
+        {/* Right Inspector Sidebars */}
+        {selectedNode && (
+          <NodeInspector
+            selectedNode={selectedNode}
+            onUpdateNode={handleUpdateNode}
+            onDeleteNode={handleDeleteNode}
+            onTraceReach={handleTraceReach}
+          />
+        )}
+
+        {selectedEdge && (
+          <EdgeInspector
+            selectedEdge={selectedEdge}
+            onUpdateEdge={handleUpdateEdge}
+            onDeleteEdge={handleDeleteEdge}
+          />
+        )}
+
+        {/* Bottom Interactive Route Inspector Bar */}
+        <RouteInspectorBar
+          nodes={nodes.filter(n => n.type === 'archifyNode') as Node<ArchifyNodeData>[]}
+          onTraceRoute={handleTraceRoute}
+          onClearTrace={handleClearTrace}
+          isTracingActive={isTracingActive}
+        />
+      </div>
+
+      {/* Projects Manager Modal */}
+      <ProjectsModal
+        isOpen={isProjectsModalOpen}
+        onClose={() => setIsProjectsModalOpen(false)}
+        activeProjectId={activeProject.id}
+        onSelectProject={handleSelectProject}
+      />
+
+      {/* JSON IR Editor Modal */}
+      <JsonEditorModal
+        isOpen={isJsonModalOpen}
+        onClose={() => setIsJsonModalOpen(false)}
+        diagramIR={currentIR}
+        onApplyJSON={(newIR) => {
+          const { nodes: n, edges: e } = irToCanvas(newIR);
+          setMeta(newIR.meta);
+          setPreset(newIR.meta.preset);
+          setNodes(n);
+          setEdges(e);
+        }}
+      />
+
+      {/* Export Formats Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        diagramIR={currentIR}
+        onExportShareCard={handleExportShareCard}
+      />
+    </div>
+  );
+}
+
+export default App;
