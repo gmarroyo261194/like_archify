@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Plus, Copy, Trash2, Edit2, Check, MoreVertical,
+  Plus, Copy, Trash2, Edit2, Check, MoreVertical, X,
   Layers, ArrowRightLeft, Radio, RefreshCw, Sparkles
 } from 'lucide-react';
 import { ProjectDiagram } from '../../types/project';
@@ -68,7 +68,7 @@ export const DiagramTabBar: React.FC<Props> = ({
                 if (!isActive) onSelectDiagram(d.id);
               }}
               onDoubleClick={(e) => startRename(d, e)}
-              className={`h-8 px-3 rounded-lg flex items-center gap-2 cursor-pointer transition-all text-xs font-medium relative group border ${
+              className={`h-8 px-2.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-all text-xs font-medium relative group border ${
                 isActive
                   ? 'bg-slate-900 border-sky-500/60 text-slate-100 shadow-md shadow-sky-500/10'
                   : 'bg-slate-950/60 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
@@ -99,7 +99,7 @@ export const DiagramTabBar: React.FC<Props> = ({
                   </button>
                 </div>
               ) : (
-                <span className="truncate max-w-[150px] font-semibold">
+                <span className="truncate max-w-[140px] font-semibold">
                   {d.title}
                 </span>
               )}
@@ -109,60 +109,77 @@ export const DiagramTabBar: React.FC<Props> = ({
                 {meta.badge}
               </span>
 
-              {/* Actions Dropdown Trigger on Hover / Active */}
+              {/* Actions Dropdown & Quick Delete on Hover */}
               {!isEditing && (
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(isMenuOpen ? null : d.id);
-                    }}
-                    className={`p-0.5 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-opacity ${
-                      isActive ? 'opacity-70 hover:opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}
-                  >
-                    <MoreVertical className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Context Menu Dropdown */}
-                  {isMenuOpen && (
-                    <div 
-                      className="absolute top-full right-0 mt-1.5 w-36 bg-[#111726] border border-[#1e293b] rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100"
-                      onClick={(e) => e.stopPropagation()}
+                <div className="flex items-center gap-0.5">
+                  {diagrams.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete diagram "${d.title}"?`)) {
+                          onDeleteDiagram(d.id);
+                        }
+                      }}
+                      className="p-0.5 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete Diagram"
                     >
-                      <button
-                        onClick={(e) => startRename(d, e)}
-                        className="w-full text-left px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 rounded-lg flex items-center gap-2"
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(isMenuOpen ? null : d.id);
+                      }}
+                      className={`p-0.5 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-opacity ${
+                        isActive ? 'opacity-70 hover:opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      <MoreVertical className="w-3 h-3" />
+                    </button>
+
+                    {/* Context Menu Dropdown */}
+                    {isMenuOpen && (
+                      <div 
+                        className="absolute top-full right-0 mt-1.5 w-36 bg-[#111726] border border-[#1e293b] rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Edit2 className="w-3 h-3 text-sky-400" />
-                        <span>Rename Tab</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          onDuplicateDiagram(d.id);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full text-left px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 rounded-lg flex items-center gap-2"
-                      >
-                        <Copy className="w-3 h-3 text-emerald-400" />
-                        <span>Duplicate</span>
-                      </button>
-                      {diagrams.length > 1 && (
+                        <button
+                          onClick={(e) => startRename(d, e)}
+                          className="w-full text-left px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 rounded-lg flex items-center gap-2"
+                        >
+                          <Edit2 className="w-3 h-3 text-sky-400" />
+                          <span>Rename Tab</span>
+                        </button>
                         <button
                           onClick={() => {
-                            if (window.confirm(`Delete diagram "${d.title}"?`)) {
-                              onDeleteDiagram(d.id);
-                            }
+                            onDuplicateDiagram(d.id);
                             setOpenMenuId(null);
                           }}
-                          className="w-full text-left px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/20 rounded-lg flex items-center gap-2"
+                          className="w-full text-left px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 rounded-lg flex items-center gap-2"
                         >
-                          <Trash2 className="w-3 h-3" />
-                          <span>Delete Tab</span>
+                          <Copy className="w-3 h-3 text-emerald-400" />
+                          <span>Duplicate</span>
                         </button>
-                      )}
-                    </div>
-                  )}
+                        {diagrams.length > 1 && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Delete diagram "${d.title}"?`)) {
+                                onDeleteDiagram(d.id);
+                              }
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full text-left px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/20 rounded-lg flex items-center gap-2"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete Tab</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
