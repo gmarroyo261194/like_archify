@@ -755,10 +755,19 @@ export function App() {
   }, [setNodes, setEdges]);
 
   const handleToggleTheme = useCallback(() => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    const newTheme: ThemeType = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     document.documentElement.classList.toggle('light', newTheme === 'light');
-  }, [theme]);
+    
+    // Propagate theme to canvas node instances
+    setNodes(nds => nds.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        theme: newTheme
+      }
+    })));
+  }, [theme, setNodes]);
 
   // Load Template inside current active diagram tab
   const handleLoadTemplate = useCallback((key: 'web' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle') => {
@@ -906,6 +915,7 @@ export function App() {
           onDrop={onDrop}
           onDragOver={onDragOver}
           preset={preset}
+          theme={theme}
           diagramType={activeDiagram.diagram_type}
         />
 

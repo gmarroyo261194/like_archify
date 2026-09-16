@@ -57,13 +57,25 @@ export const ArchifyNode = memo(({ data, selected }: CustomNodeProps) => {
   const isHighlighted = data.isHighlighted;
   const isDimmed = data.isDimmed;
 
-  let containerBg = 'bg-[#111726]/90 border-[#1e293b] text-slate-100 backdrop-blur-md';
+  const theme = data.theme || 'dark';
+  const isLight = theme === 'light';
+
+  let containerBg = isLight 
+    ? 'bg-white/95 border-slate-200 text-slate-900 shadow-md backdrop-blur-md'
+    : 'bg-[#111726]/90 border-[#1e293b] text-slate-100 backdrop-blur-md';
+
   if (preset === 'blueprint') {
-    containerBg = 'bg-[#0b192e]/95 border-[#1d4ed8] text-blue-100 font-mono';
+    containerBg = isLight
+      ? 'bg-[#eff6ff]/95 border-[#3b82f6] text-blue-950 font-mono shadow-md'
+      : 'bg-[#0b192e]/95 border-[#1d4ed8] text-blue-100 font-mono';
   } else if (preset === 'classic') {
-    containerBg = 'bg-[#1e293b]/95 border-slate-700 text-slate-100 shadow-xl';
+    containerBg = isLight
+      ? 'bg-slate-100/95 border-slate-300 text-slate-900 shadow-lg'
+      : 'bg-[#1e293b]/95 border-slate-700 text-slate-100 shadow-xl';
   } else if (preset === 'minimal') {
-    containerBg = 'bg-[#0f172a]/95 border-slate-800 text-slate-200';
+    containerBg = isLight
+      ? 'bg-slate-50/95 border-slate-200 text-slate-800'
+      : 'bg-[#0f172a]/95 border-slate-800 text-slate-200';
   }
 
   const highlightBorder = isHighlighted

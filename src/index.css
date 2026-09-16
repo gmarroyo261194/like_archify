@@ -14,13 +14,111 @@
   }
 
   .light {
-    --bg-main: #f8fafc;
+    --bg-main: #f1f5f9;
     --panel-bg: #ffffff;
-    --panel-border: #e2e8f0;
+    --panel-border: #cbd5e1;
     --text-primary: #0f172a;
-    --text-muted: #64748b;
+    --text-muted: #475569;
     --accent: #0284c7;
-    --accent-glow: rgba(2, 132, 199, 0.2);
+    --accent-glow: rgba(2, 132, 199, 0.15);
+  }
+
+  /* Light Theme Class Overrides */
+  .light header {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  .light header h1, 
+  .light header span, 
+  .light header button {
+    color: #0f172a;
+  }
+
+  .light header button.bg-slate-900 {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+
+  .light header button.bg-slate-900:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  .light .h-10.bg-\[\#0d121f\] {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  .light .h-10.bg-\[\#0d121f\] .bg-slate-950\/60 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+  }
+
+  .light .h-10.bg-\[\#0d121f\] .bg-slate-900 {
+    background-color: #e0f2fe !important;
+    border-color: #38bdf8 !important;
+    color: #0369a1 !important;
+  }
+
+  .light .bg-\[\#111726\]\/95,
+  .light .bg-\[\#111726\] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  .light .bg-slate-900,
+  .light .bg-slate-950,
+  .light .bg-slate-950\/60,
+  .light .bg-slate-900\/80 {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  .light .text-white,
+  .light .text-slate-100,
+  .light .text-slate-200 {
+    color: #0f172a !important;
+  }
+
+  .light .text-slate-400,
+  .light .text-slate-500 {
+    color: #64748b !important;
+  }
+
+  .light input,
+  .light select,
+  .light textarea {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  .light .react-flow {
+    background-color: #f1f5f9 !important;
+  }
+
+  .light .react-flow__controls {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .light .react-flow__controls-button {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+    fill: #0f172a !important;
+  }
+
+  .light .react-flow__minimap {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
   }
 
   body {

@@ -30,6 +30,7 @@ interface Props {
   onDrop: (event: React.DragEvent) => void;
   onDragOver: (event: React.DragEvent) => void;
   preset: PresetType;
+  theme?: string;
   diagramType?: string;
 }
 
@@ -45,6 +46,7 @@ export const DiagramCanvas: React.FC<Props> = ({
   onDrop,
   onDragOver,
   preset,
+  theme = 'dark',
   diagramType
 }) => {
   const nodeTypes = useMemo(() => ({
@@ -56,14 +58,15 @@ export const DiagramCanvas: React.FC<Props> = ({
     archifyEdge: ArchifyEdge
   }), []);
 
-  let gridColor = 'rgba(255, 255, 255, 0.07)';
+  const isLight = theme === 'light';
+  let gridColor = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.07)';
   let bgVariant = BackgroundVariant.Dots;
 
   if (preset === 'blueprint') {
-    gridColor = 'rgba(96, 165, 250, 0.15)';
+    gridColor = isLight ? 'rgba(37, 99, 235, 0.18)' : 'rgba(96, 165, 250, 0.15)';
     bgVariant = BackgroundVariant.Lines;
   } else if (preset === 'classic') {
-    gridColor = 'rgba(255, 255, 255, 0.04)';
+    gridColor = isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.04)';
     bgVariant = BackgroundVariant.Cross;
   }
 
