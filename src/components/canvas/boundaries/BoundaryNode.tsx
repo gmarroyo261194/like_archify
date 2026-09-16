@@ -13,14 +13,19 @@ const BOUNDARY_ICONS: Record<string, any> = {
 
 export const BoundaryNode = memo(({ data, selected }: NodeProps<Node<ArchifyBoundaryData>>) => {
   const type = (data?.type || 'vpc') as string;
-  const Icon = BOUNDARY_ICONS[type] || Cloud;
+  const isFrame = type === 'frame' || type === 'interaction' || type === 'group';
+  const Icon = BOUNDARY_ICONS[type] || (isFrame ? Box : Cloud);
 
   return (
     <div
-      className={`w-full h-full rounded-2xl border-2 border-dashed p-4 transition-all relative ${
-        selected 
-          ? 'border-sky-400 bg-sky-500/[0.06] shadow-[0_0_20px_rgba(56,189,248,0.15)] ring-1 ring-sky-400/40' 
-          : 'border-slate-700/60 bg-slate-900/[0.25]'
+      className={`w-full h-full rounded-2xl border-2 transition-all relative ${
+        isFrame
+          ? selected
+            ? 'border-slate-500 bg-slate-900/40 border-dashed ring-1 ring-slate-400'
+            : 'border-slate-700/50 bg-slate-900/15 border-dashed hover:border-slate-600/70'
+          : selected 
+          ? 'border-sky-400 bg-sky-500/[0.06] shadow-[0_0_20px_rgba(56,189,248,0.15)] ring-1 ring-sky-400/40 border-dashed' 
+          : 'border-slate-700/60 bg-slate-900/[0.25] border-dashed'
       }`}
     >
       {/* NodeResizer for Boundary only */}
@@ -39,12 +44,14 @@ export const BoundaryNode = memo(({ data, selected }: NodeProps<Node<ArchifyBoun
         }}
       />
 
-      <div className="flex items-center gap-2 text-slate-300 uppercase tracking-widest text-[11px] font-bold pointer-events-none">
-        <Icon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-        <span className="truncate">{data?.label || 'Boundary'}</span>
-        <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono shrink-0">
-          {type}
-        </span>
+      <div className="flex items-center gap-2 text-slate-400 uppercase tracking-widest text-[10px] font-bold pointer-events-none">
+        {!isFrame && <Icon className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+        <span className="truncate text-slate-300">{data?.label || 'Boundary'}</span>
+        {!isFrame && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono shrink-0">
+            {type}
+          </span>
+        )}
       </div>
     </div>
   );

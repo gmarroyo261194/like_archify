@@ -367,132 +367,262 @@ export const TEMPLATE_WORKFLOW: ArchifyDiagramIR = {
   ]
 };
 
-// 3. Sequence Diagram (Participants, Lifelines, Synchronous & Return Calls)
+// 3. Sequence Diagram (Archify Full Interaction Over Time: Request, Fallback, Trace)
 export const TEMPLATE_SEQUENCE: ArchifyDiagramIR = {
   schema_version: '2.0.0',
   diagram_type: 'sequence',
   meta: {
-    title: 'OAuth2 Authorization Code & JWT Sequence',
-    description: 'Complete token exchange lifecycle between Browser Client, API Gateway, OAuth Provider, and User Database.',
-    version: '1.5.0',
+    title: 'Dashboard Interaction & Telemetry Sequence',
+    description: 'Sequence explains one interaction over time: User, Web App, API, Auth, Redis, Postgres, and Trace.',
+    version: '2.0.0',
     author: 'Archify Studio',
     updated_at: new Date().toISOString(),
-    preset: 'blueprint',
+    preset: 'signal-flow',
     theme: 'dark'
   },
   boundaries: [
     {
-      id: 'b-auth-flow',
-      label: 'Security & Token Exchange Domain',
-      type: 'lifeline-container',
-      position: { x: 50, y: 80 },
-      size: { width: 1100, height: 480 }
+      id: 'frame-req',
+      label: 'Request',
+      type: 'frame',
+      position: { x: 30, y: 130 },
+      size: { width: 1100, height: 160 }
+    },
+    {
+      id: 'frame-fallback',
+      label: 'Fallback',
+      type: 'frame',
+      position: { x: 30, y: 305 },
+      size: { width: 1100, height: 190 }
+    },
+    {
+      id: 'frame-trace',
+      label: 'Response + trace',
+      type: 'frame',
+      position: { x: 30, y: 510 },
+      size: { width: 1100, height: 160 }
     }
   ],
   nodes: [
     {
-      id: 'seq-client',
-      label: 'Browser Client',
-      subtitle: 'Single Page App',
-      role: 'participant',
+      id: 'p-user',
+      label: 'User',
+      subtitle: 'browser session',
+      role: 'client',
       shape: 'participant',
-      tech: 'React / Next.js',
+      tech: 'Browser',
       icon: 'Globe',
-      status: 'healthy',
-      boundary_id: 'b-auth-flow',
-      position: { x: 80, y: 130 }
+      position: { x: 50, y: 40 },
+      metadata: {
+        lifelineHeight: '620',
+        activations: JSON.stringify([])
+      }
     },
     {
-      id: 'seq-gateway',
-      label: 'API Gateway',
-      subtitle: 'Reverse Proxy & Ingress',
-      role: 'participant',
+      id: 'p-webapp',
+      label: 'Web App',
+      subtitle: 'React UI',
+      role: 'gateway',
       shape: 'participant',
-      tech: 'Kong / Envoy',
+      tech: 'Next.js UI',
       icon: 'Layers',
-      status: 'healthy',
-      boundary_id: 'b-auth-flow',
-      position: { x: 380, y: 130 }
+      position: { x: 210, y: 40 },
+      metadata: {
+        lifelineHeight: '620',
+        activations: JSON.stringify([
+          { top: 120, height: 470, color: '#38bdf8' }
+        ])
+      }
     },
     {
-      id: 'seq-auth-server',
-      label: 'Auth Server (IdP)',
-      subtitle: 'OIDC / Keycloak',
-      role: 'participant',
+      id: 'p-api',
+      label: 'API',
+      subtitle: 'request handler',
+      role: 'service',
       shape: 'participant',
-      tech: 'OAuth 2.1 Provider',
-      icon: 'Shield',
-      status: 'healthy',
-      boundary_id: 'b-auth-flow',
-      position: { x: 680, y: 130 }
+      tech: 'Node / Express',
+      icon: 'Server',
+      position: { x: 370, y: 40 },
+      metadata: {
+        lifelineHeight: '620',
+        activations: JSON.stringify([
+          { top: 130, height: 430, color: '#2dd4bf' }
+        ])
+      }
     },
     {
-      id: 'seq-db',
-      label: 'User Credentials DB',
-      subtitle: 'PostgreSQL Identity Store',
-      role: 'participant',
+      id: 'p-auth',
+      label: 'Auth',
+      subtitle: 'JWT verify',
+      role: 'security',
+      shape: 'participant',
+      tech: 'Keycloak / Auth0',
+      icon: 'Shield',
+      position: { x: 530, y: 40 },
+      metadata: {
+        lifelineHeight: '620',
+        activations: JSON.stringify([
+          { top: 170, height: 50, color: '#f43f5e' }
+        ])
+      }
+    },
+    {
+      id: 'p-redis',
+      label: 'Redis',
+      subtitle: 'cache',
+      role: 'cache',
+      shape: 'participant',
+      tech: 'Redis v7',
+      icon: 'Database',
+      position: { x: 690, y: 40 },
+      metadata: {
+        lifelineHeight: '620',
+        activations: JSON.stringify([
+          { top: 260, height: 55, color: '#c084fc' }
+        ])
+      }
+    },
+    {
+      id: 'p-postgres',
+      label: 'Postgres',
+      subtitle: 'source of truth',
+      role: 'database',
       shape: 'participant',
       tech: 'Postgres 16',
       icon: 'Database',
-      status: 'healthy',
-      boundary_id: 'b-auth-flow',
-      position: { x: 960, y: 130 }
+      position: { x: 850, y: 40 },
+      metadata: {
+        lifelineHeight: '620',
+        activations: JSON.stringify([
+          { top: 355, height: 60, color: '#a78bfa' }
+        ])
+      }
+    },
+    {
+      id: 'p-trace',
+      label: 'Trace',
+      subtitle: 'async event',
+      role: 'queue',
+      shape: 'participant',
+      tech: 'OpenTelemetry / Kafka',
+      icon: 'Network',
+      position: { x: 1010, y: 40 },
+      metadata: {
+        lifelineHeight: '620',
+        activations: JSON.stringify([
+          { top: 505, height: 60, color: '#fb923c' }
+        ])
+      }
     }
   ],
   edges: [
     {
-      id: 'sqe-1',
-      source: 'seq-client',
-      target: 'seq-gateway',
-      label: '1. POST /login (Credentials)',
-      protocol: 'HTTPS REST',
-      animated: true,
-      latency: '20ms'
+      id: 'sq-1',
+      source: 'p-user',
+      target: 'p-webapp',
+      label: 'open page',
+      protocol: 'request',
+      edge_type: 'request',
+      animated: true
     },
     {
-      id: 'sqe-2',
-      source: 'seq-gateway',
-      target: 'seq-auth-server',
-      label: '2. Validate Client & Scope',
-      protocol: 'gRPC / TLS',
-      animated: true,
-      latency: '5ms'
+      id: 'sq-2',
+      source: 'p-webapp',
+      target: 'p-api',
+      label: 'GET /dashboard',
+      protocol: 'request',
+      edge_type: 'request',
+      animated: true
     },
     {
-      id: 'sqe-3',
-      source: 'seq-auth-server',
-      target: 'seq-db',
-      label: '3. Query Salted Password Hash',
-      protocol: 'SQL Select',
-      animated: true,
-      latency: '3ms'
+      id: 'sq-3',
+      source: 'p-api',
+      target: 'p-auth',
+      label: 'verify JWT',
+      protocol: 'security',
+      edge_type: 'security',
+      animated: true
     },
     {
-      id: 'sqe-4',
-      source: 'seq-db',
-      target: 'seq-auth-server',
-      label: '4. Return Verified User Record',
-      protocol: 'SQL Result',
-      animated: true,
-      latency: '2ms'
+      id: 'sq-4',
+      source: 'p-auth',
+      target: 'p-api',
+      label: 'claims ok',
+      protocol: 'return',
+      edge_type: 'return',
+      animated: false
     },
     {
-      id: 'sqe-5',
-      source: 'seq-auth-server',
-      target: 'seq-gateway',
-      label: '5. Sign & Return JWT (Access + Refresh)',
-      protocol: 'RS256 JWT Token',
-      animated: true,
-      latency: '4ms'
+      id: 'sq-5',
+      source: 'p-api',
+      target: 'p-redis',
+      label: 'read cache',
+      protocol: 'request',
+      edge_type: 'request',
+      animated: true
     },
     {
-      id: 'sqe-6',
-      source: 'seq-gateway',
-      target: 'seq-client',
-      label: '6. Set-Cookie HttpOnly + 200 OK',
-      protocol: 'HTTPS 200 OK',
-      animated: true,
-      latency: '15ms'
+      id: 'sq-6',
+      source: 'p-redis',
+      target: 'p-api',
+      label: 'miss',
+      protocol: 'return',
+      edge_type: 'return',
+      animated: false
+    },
+    {
+      id: 'sq-7',
+      source: 'p-api',
+      target: 'p-postgres',
+      label: 'query profile + metrics',
+      protocol: 'request',
+      edge_type: 'request',
+      animated: true
+    },
+    {
+      id: 'sq-8',
+      source: 'p-postgres',
+      target: 'p-api',
+      label: 'rows',
+      protocol: 'return',
+      edge_type: 'return',
+      animated: false
+    },
+    {
+      id: 'sq-9',
+      source: 'p-api',
+      target: 'p-redis',
+      label: 'set cache',
+      protocol: 'async',
+      edge_type: 'async',
+      animated: true
+    },
+    {
+      id: 'sq-10',
+      source: 'p-api',
+      target: 'p-trace',
+      label: 'emit trace',
+      protocol: 'async',
+      edge_type: 'async',
+      animated: true
+    },
+    {
+      id: 'sq-11',
+      source: 'p-api',
+      target: 'p-webapp',
+      label: '200 JSON',
+      protocol: 'return',
+      edge_type: 'return',
+      animated: false
+    },
+    {
+      id: 'sq-12',
+      source: 'p-webapp',
+      target: 'p-user',
+      label: 'render',
+      protocol: 'return',
+      edge_type: 'return',
+      animated: false
     }
   ]
 };

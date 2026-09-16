@@ -95,6 +95,7 @@ function irToCanvas(ir: ArchifyDiagramIR): { nodes: Node[]; edges: Edge[] } {
       target: e.target,
       label: e.label,
       protocol: e.protocol,
+      edgeType: e.edge_type as any,
       animated: e.animated !== false,
       latency: e.latency,
       isHighlighted: false,
@@ -866,6 +867,7 @@ export function App() {
           onDrop={onDrop}
           onDragOver={onDragOver}
           preset={preset}
+          diagramType={activeDiagram.diagram_type}
         />
 
         {/* Right Inspector Sidebars */}

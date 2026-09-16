@@ -30,6 +30,7 @@ interface Props {
   onDrop: (event: React.DragEvent) => void;
   onDragOver: (event: React.DragEvent) => void;
   preset: PresetType;
+  diagramType?: string;
 }
 
 export const DiagramCanvas: React.FC<Props> = ({
@@ -43,7 +44,8 @@ export const DiagramCanvas: React.FC<Props> = ({
   onPaneClick,
   onDrop,
   onDragOver,
-  preset
+  preset,
+  diagramType
 }) => {
   const nodeTypes = useMemo(() => ({
     archifyNode: ArchifyNode,
@@ -107,6 +109,33 @@ export const DiagramCanvas: React.FC<Props> = ({
           maskColor="rgba(10, 13, 20, 0.75)"
         />
       </ReactFlow>
+
+      {/* Sequence Semantic Legend Overlay */}
+      {diagramType === 'sequence' && (
+        <div className="absolute bottom-4 left-4 z-20 bg-[#111726]/95 border border-slate-700/80 rounded-xl px-3.5 py-2 shadow-xl backdrop-blur-md flex items-center gap-4 text-[11px] font-mono select-none">
+          <span className="font-bold text-slate-100 uppercase tracking-wider text-[10px]">Legend</span>
+          <div className="flex items-center gap-1.5 text-emerald-400">
+            <span className="w-4 h-0.5 bg-emerald-400 rounded"></span>
+            <span>request</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span className="w-4 h-0.5 border-t border-dashed border-slate-400"></span>
+            <span>return</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-rose-400">
+            <span className="w-4 h-0.5 border-t-2 border-dashed border-rose-500"></span>
+            <span>security</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-purple-400">
+            <span className="w-4 h-0.5 border-t-2 border-dashed border-purple-400"></span>
+            <span>async trace</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span className="w-4 h-0.5 bg-slate-500 rounded"></span>
+            <span>default message</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

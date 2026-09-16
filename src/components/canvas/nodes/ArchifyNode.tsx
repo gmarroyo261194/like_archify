@@ -174,38 +174,74 @@ export const ArchifyNode = memo(({ data, selected }: CustomNodeProps) => {
     );
   }
 
-  // 4. Participant Shape (Sequence Diagram Lifeline Actor)
+  // 4. Participant Shape (Sequence Diagram Lifeline Actor with Execution Bars)
   if (shape === 'participant') {
+    const lifelineHeight = (data.metadata?.lifelineHeight ? parseInt(data.metadata.lifelineHeight, 10) : 520);
+    const activationsRaw = data.metadata?.activations;
+    let activations: { top: number; height: number; color?: string }[] = [];
+    if (activationsRaw) {
+      try {
+        activations = JSON.parse(activationsRaw);
+      } catch (e) {
+        // ignore
+      }
+    }
+
     return (
       <div
-        className={`relative min-w-[180px] max-w-[220px] rounded-xl border-2 p-3 transition-all duration-200 cursor-pointer shadow-lg ${containerBg} ${highlightBorder} ${
-          isDimmed ? 'opacity-30 filter grayscale' : 'opacity-100'
+        className={`relative flex flex-col items-center select-none transition-all duration-200 cursor-pointer ${
+          isDimmed ? 'opacity-25 filter grayscale' : 'opacity-100'
         }`}
+        style={{ width: 140 }}
       >
-        <Handle type="target" position={Position.Top} className="!-top-1" />
-        <Handle type="source" position={Position.Bottom} className="!-bottom-1" />
-        <Handle type="target" position={Position.Left} id="left-t" className="!-left-1" />
-        <Handle type="source" position={Position.Right} id="right-s" className="!-right-1" />
+        {/* Connection Handles */}
+        <Handle type="target" position={Position.Top} className="!-top-1 !opacity-0" />
+        <Handle type="source" position={Position.Bottom} className="!-bottom-1 !opacity-0" />
+        <Handle type="target" position={Position.Left} id="left-t" className="!top-6 !-left-1 !opacity-0" />
+        <Handle type="source" position={Position.Right} id="right-s" className="!top-6 !-right-1 !opacity-0" />
 
-        <div className="flex items-center gap-2 mb-1.5">
-          <div className={`p-1.5 rounded-lg border ${roleStyle.bg} ${roleStyle.border} ${roleStyle.text}`}>
-            <IconComponent className="w-4 h-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-white truncate">
+        {/* Participant Header Card (Archify Sequence Style) */}
+        <div
+          className={`w-full rounded-xl border-2 px-3 py-2.5 flex flex-col items-center justify-center text-center shadow-lg transition-all ${
+            roleStyle.bg
+          } ${roleStyle.border} ${roleStyle.glow} ${
+            isHighlighted
+              ? 'ring-2 ring-cyan-400 scale-[1.03]'
+              : selected
+              ? 'ring-2 ring-sky-400/80 scale-[1.02]'
+              : ''
+          }`}
+        >
+          <div className="flex items-center gap-1.5 mb-1">
+            <IconComponent className={`w-3.5 h-3.5 ${roleStyle.text} shrink-0`} />
+            <h4 className={`text-xs font-bold font-mono tracking-tight text-white truncate`}>
               {data.label}
             </h4>
-            <p className="text-[10px] text-slate-400 truncate">
-              {data.subtitle || 'Participant'}
-            </p>
           </div>
+          <span className="text-[10px] text-slate-300/80 font-sans line-clamp-1">
+            {data.subtitle || data.tech || 'Participant'}
+          </span>
         </div>
 
-        {data.tech && (
-          <div className="text-[10px] font-mono text-sky-400 bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800 truncate">
-            {data.tech}
-          </div>
-        )}
+        {/* Vertical Dashed Lifeline */}
+        <div
+          className="w-0.5 border-l-2 border-dashed border-slate-600/70 relative mt-1"
+          style={{ height: lifelineHeight }}
+        >
+          {/* Execution / Activation Bars */}
+          {activations.map((box, idx) => (
+            <div
+              key={idx}
+              className="absolute -left-[7px] w-[15px] rounded-md border-2 bg-slate-900/90 transition-all"
+              style={{
+                top: box.top,
+                height: box.height,
+                borderColor: box.color || (role === 'security' ? '#f43f5e' : role === 'cache' ? '#c084fc' : role === 'database' ? '#a78bfa' : role === 'queue' ? '#fb923c' : '#2dd4bf'),
+                boxShadow: `0 0 12px ${box.color || (role === 'security' ? '#f43f5e' : role === 'cache' ? '#c084fc' : role === 'database' ? '#a78bfa' : role === 'queue' ? '#fb923c' : '#2dd4bf')}50`
+              }}
+            />
+          ))}
+        </div>
       </div>
     );
   }

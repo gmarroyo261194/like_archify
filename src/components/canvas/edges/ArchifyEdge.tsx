@@ -29,12 +29,27 @@ export const ArchifyEdge = memo(({
   const isHighlighted = data?.isHighlighted;
   const isDimmed = data?.isDimmed;
   const isAnimated = data?.animated !== false;
+  const edgeType = data?.edgeType || 'solid';
+
+  // Semantic Sequence & Flow Coloring
+  let defaultStroke = '#475569';
+  if (edgeType === 'return') {
+    defaultStroke = '#94a3b8'; // gray/dashed return
+  } else if (edgeType === 'security' || data?.protocol?.toLowerCase().includes('jwt') || data?.protocol?.toLowerCase().includes('auth') || data?.label?.toLowerCase().includes('jwt') || data?.label?.toLowerCase().includes('auth')) {
+    defaultStroke = '#f43f5e'; // rose/security
+  } else if (edgeType === 'async' || data?.protocol?.toLowerCase().includes('trace') || data?.protocol?.toLowerCase().includes('event') || data?.protocol?.toLowerCase().includes('kafka') || data?.label?.toLowerCase().includes('trace')) {
+    defaultStroke = '#a855f7'; // purple/async trace
+  } else if (edgeType === 'request' || data?.protocol?.toLowerCase().includes('http') || data?.label?.toLowerCase().includes('get') || data?.label?.toLowerCase().includes('post')) {
+    defaultStroke = '#10b981'; // emerald request
+  }
 
   const strokeColor = isHighlighted 
     ? '#22d3ee' 
     : selected 
     ? '#38bdf8' 
-    : '#475569';
+    : defaultStroke;
+
+  const isDashed = edgeType === 'dashed' || edgeType === 'return' || edgeType === 'async';
 
   return (
     <>
@@ -57,7 +72,8 @@ export const ArchifyEdge = memo(({
         style={{
           ...(style || {}),
           stroke: strokeColor,
-          strokeWidth: isHighlighted ? 2.5 : selected ? 2 : 1.5,
+          strokeWidth: isHighlighted ? 2.5 : selected ? 2 : 1.75,
+          strokeDasharray: isDashed ? '6, 5' : undefined,
           opacity: isDimmed ? 0.2 : 1
         }}
       />

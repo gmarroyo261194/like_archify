@@ -47,7 +47,7 @@ export interface ArchifyEdgeData extends Record<string, unknown> {
   label?: string;
   protocol?: string;
   animated?: boolean;
-  edgeType?: 'solid' | 'dashed' | 'return' | 'conditional';
+  edgeType?: 'solid' | 'dashed' | 'return' | 'conditional' | 'security' | 'async' | 'request';
   latency?: string;
   dataRate?: string;
   authType?: string;
