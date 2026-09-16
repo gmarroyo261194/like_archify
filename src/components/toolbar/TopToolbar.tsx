@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Code2, Download, Moon, Sun, RotateCcw, 
   BookOpen, FolderOpen, Edit3, Check, Cloud,
-  Sparkles, Layout, ShieldAlert
+  Sparkles, Layout, ShieldAlert, GitBranch
 } from 'lucide-react';
 import { PresetType, ThemeType, DiagramType } from '../../types/archify';
 
@@ -18,6 +18,7 @@ interface Props {
   onOpenExportModal: () => void;
   onOpenAIModal: () => void;
   onOpenAuditModal: () => void;
+  onOpenRepoModal: () => void;
   onAutoLayout: () => void;
   onLoadTemplate: (templateKey: 'web' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle') => void;
   onResetCanvas: () => void;
@@ -37,6 +38,7 @@ export const TopToolbar: React.FC<Props> = ({
   onOpenExportModal,
   onOpenAIModal,
   onOpenAuditModal,
+  onOpenRepoModal,
   onAutoLayout,
   onLoadTemplate,
   onResetCanvas,
@@ -121,17 +123,27 @@ export const TopToolbar: React.FC<Props> = ({
         {/* AI Architect Action Button */}
         <button
           onClick={onOpenAIModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-bold shadow-md shadow-cyan-500/10 transition-all group"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-bold shadow-md shadow-cyan-500/10 transition-all group cursor-pointer"
           title="Generate Architecture with AI"
         >
           <Sparkles className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
           <span>AI Architect</span>
         </button>
 
+        {/* Repo to Diagram Reverse Engineering Button */}
+        <button
+          onClick={onOpenRepoModal}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-sky-500/50 text-sky-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
+          title="Import GitHub Repo or IaC Manifests"
+        >
+          <GitBranch className="w-3.5 h-3.5 text-sky-400" />
+          <span className="hidden md:inline">Repo Scan</span>
+        </button>
+
         {/* Architecture Audit Linter Button */}
         <button
           onClick={onOpenAuditModal}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-indigo-300 hover:text-white text-xs font-medium transition-all"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-indigo-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
           title="Audit architecture for security, bottlenecks & anti-patterns"
         >
           <ShieldAlert className="w-3.5 h-3.5 text-indigo-400" />

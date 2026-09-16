@@ -21,6 +21,7 @@ import { DiagramTabBar } from './components/toolbar/DiagramTabBar';
 import { NewDiagramModal } from './components/toolbar/NewDiagramModal';
 import { AIDiagramModal } from './components/ai/AIDiagramModal';
 import { ArchitectureAuditModal } from './components/ai/ArchitectureAuditModal';
+import { RepoToDiagramModal } from './components/ai/RepoToDiagramModal';
 import { ComponentPalette } from './components/sidebar/ComponentPalette';
 import { NodeInspector } from './components/inspector/NodeInspector';
 import { EdgeInspector } from './components/inspector/EdgeInspector';
@@ -191,6 +192,7 @@ export function App() {
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [isNewDiagramModalOpen, setIsNewDiagramModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isRepoModalOpen, setIsRepoModalOpen] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -811,6 +813,7 @@ export function App() {
         onOpenExportModal={() => setIsExportModalOpen(true)}
         onOpenAIModal={() => setIsAIModalOpen(true)}
         onOpenAuditModal={() => setIsAuditModalOpen(true)}
+        onOpenRepoModal={() => setIsRepoModalOpen(true)}
         onAutoLayout={handleAutoLayout}
         onLoadTemplate={handleLoadTemplate}
         onResetCanvas={handleResetCanvas}
@@ -930,6 +933,13 @@ export function App() {
         isOpen={isAuditModalOpen}
         onClose={() => setIsAuditModalOpen(false)}
         diagramIR={currentIR}
+      />
+
+      {/* Repo-to-Diagram Synthesizer Modal */}
+      <RepoToDiagramModal
+        isOpen={isRepoModalOpen}
+        onClose={() => setIsRepoModalOpen(false)}
+        onApplyDiagram={handleApplyAIDiagram}
       />
 
       {/* JSON IR Editor Modal */}
