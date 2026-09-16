@@ -20,6 +20,7 @@ import { TopToolbar } from './components/toolbar/TopToolbar';
 import { DiagramTabBar } from './components/toolbar/DiagramTabBar';
 import { NewDiagramModal } from './components/toolbar/NewDiagramModal';
 import { AIDiagramModal } from './components/ai/AIDiagramModal';
+import { ArchitectureAuditModal } from './components/ai/ArchitectureAuditModal';
 import { ComponentPalette } from './components/sidebar/ComponentPalette';
 import { NodeInspector } from './components/inspector/NodeInspector';
 import { EdgeInspector } from './components/inspector/EdgeInspector';
@@ -190,6 +191,7 @@ export function App() {
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [isNewDiagramModalOpen, setIsNewDiagramModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTracingActive, setIsTracingActive] = useState(false);
@@ -808,6 +810,7 @@ export function App() {
         onOpenJsonModal={() => setIsJsonModalOpen(true)}
         onOpenExportModal={() => setIsExportModalOpen(true)}
         onOpenAIModal={() => setIsAIModalOpen(true)}
+        onOpenAuditModal={() => setIsAuditModalOpen(true)}
         onAutoLayout={handleAutoLayout}
         onLoadTemplate={handleLoadTemplate}
         onResetCanvas={handleResetCanvas}
@@ -920,6 +923,13 @@ export function App() {
         onClose={() => setIsAIModalOpen(false)}
         onGenerate={handleApplyAIDiagram}
         currentDiagramType={activeDiagram.diagram_type}
+      />
+
+      {/* Architecture Audit & Linter Modal */}
+      <ArchitectureAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        diagramIR={currentIR}
       />
 
       {/* JSON IR Editor Modal */}

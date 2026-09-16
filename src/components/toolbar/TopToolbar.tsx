@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Code2, Download, Moon, Sun, RotateCcw, 
   BookOpen, FolderOpen, Edit3, Check, Cloud,
-  Sparkles, Layout
+  Sparkles, Layout, ShieldAlert
 } from 'lucide-react';
 import { PresetType, ThemeType, DiagramType } from '../../types/archify';
 
@@ -17,6 +17,7 @@ interface Props {
   onOpenJsonModal: () => void;
   onOpenExportModal: () => void;
   onOpenAIModal: () => void;
+  onOpenAuditModal: () => void;
   onAutoLayout: () => void;
   onLoadTemplate: (templateKey: 'web' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle') => void;
   onResetCanvas: () => void;
@@ -35,6 +36,7 @@ export const TopToolbar: React.FC<Props> = ({
   onOpenJsonModal,
   onOpenExportModal,
   onOpenAIModal,
+  onOpenAuditModal,
   onAutoLayout,
   onLoadTemplate,
   onResetCanvas,
@@ -114,7 +116,7 @@ export const TopToolbar: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Center Controls: AI Generator + Presets + Templates */}
+      {/* Center Controls: AI Generator + Audit + Presets + Templates */}
       <div className="flex items-center gap-2">
         {/* AI Architect Action Button */}
         <button
@@ -124,6 +126,16 @@ export const TopToolbar: React.FC<Props> = ({
         >
           <Sparkles className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
           <span>AI Architect</span>
+        </button>
+
+        {/* Architecture Audit Linter Button */}
+        <button
+          onClick={onOpenAuditModal}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-indigo-300 hover:text-white text-xs font-medium transition-all"
+          title="Audit architecture for security, bottlenecks & anti-patterns"
+        >
+          <ShieldAlert className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="hidden md:inline">Audit</span>
         </button>
 
         {/* Auto Layout Button */}
