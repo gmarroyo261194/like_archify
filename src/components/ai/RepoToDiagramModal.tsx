@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, GitBranch, Globe, FileCode, Loader2, Sparkles, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, GitBranch, Globe, Folder, FileCode, Loader2, Sparkles, Check, AlertCircle, UploadCloud } from 'lucide-react';
 import { ArchifyDiagramIR } from '../../types/archify';
 import { parseManifestsToDiagram, RepoAnalysisResult } from '../../lib/repo/repoParser';
 
@@ -46,8 +46,10 @@ export const RepoToDiagramModal: React.FC<Props> = ({
   onClose,
   onApplyDiagram
 }) => {
-  const [tab, setTab] = useState<'url' | 'paste'>('url');
+  const [tab, setTab] = useState<'url' | 'folder' | 'paste'>('url');
   const [githubUrl, setGithubUrl] = useState('https://github.com/tt-a1i/archify');
+  const [localFolderFiles, setLocalFolderFiles] = useState<{ path: string; content: string }[]>([]);
+  const [localFolderName, setLocalFolderName] = useState('');
   const [manifestText, setManifestText] = useState(SAMPLE_DOCKER_COMPOSE);
   const [manifestPath, setManifestPath] = useState('docker-compose.yml');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -55,6 +57,86 @@ export const RepoToDiagramModal: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handlePickLocalFolder = async () => {
+    setError(null);
+    try {
+      if ('showDirectoryPicker' in window) {
+        const dirHandle = await (window as any).showDirectoryPicker();
+        setLocalFolderName(dirHandle.name);
+        const files: { path: string; content: string }[] = [];
+
+        async function readDir(handle: any, currentPath: string = '') {
+          for await (const entry of handle.values()) {
+            if (entry.kind === 'file') {
+              const filename = entry.name.toLowerCase();
+              if (
+                filename.includes('docker-compose') ||
+                filename.endsWith('package.json') ||
+                filename.endsWith('go.mod') ||
+                filename.endsWith('requirements.txt') ||
+                filename.endsWith('.tf') ||
+                filename.endsWith('cargo.toml') ||
+                filename.endsWith('pom.xml')
+              ) {
+                const file = await entry.getFile();
+                const text = await file.text();
+                files.push({ path: currentPath ? `${currentPath}/${entry.name}` : entry.name, content: text });
+              }
+            } else if (entry.kind === 'directory' && entry.name !== 'node_modules' && entry.name !== '.git' && entry.name !== 'dist') {
+              await readDir(entry, currentPath ? `${currentPath}/${entry.name}` : entry.name);
+            }
+          }
+        }
+
+        await readDir(dirHandle);
+        setLocalFolderFiles(files);
+        if (files.length === 0) {
+          setError(`No standard manifest files (docker-compose, package.json, go.mod, .tf) found in "${dirHandle.name}".`);
+        }
+      } else {
+        setError('Browser directory picker is not supported in this browser. Please use HTML input or Paste Manifest.');
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Folder pick error:', err);
+        setError(err?.message || 'Failed to read directory');
+      }
+    }
+  };
+
+  const handleFolderInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const files: { path: string; content: string }[] = [];
+    const firstPath = fileList[0].webkitRelativePath || fileList[0].name;
+    const rootName = firstPath.split('/')[0] || 'Local Project';
+    setLocalFolderName(rootName);
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const filename = file.name.toLowerCase();
+      if (
+        filename.includes('docker-compose') ||
+        filename.endsWith('package.json') ||
+        filename.endsWith('go.mod') ||
+        filename.endsWith('requirements.txt') ||
+        filename.endsWith('.tf') ||
+        filename.endsWith('cargo.toml') ||
+        filename.endsWith('pom.xml')
+      ) {
+        const text = await file.text();
+        files.push({ path: file.webkitRelativePath || file.name, content: text });
+      }
+    }
+
+    setLocalFolderFiles(files);
+    if (files.length === 0) {
+      setError(`No manifest files found in selected folder.`);
+    }
+  };
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -66,7 +148,7 @@ export const RepoToDiagramModal: React.FC<Props> = ({
         const [owner, repo] = repoClean.split('/');
         
         if (!owner || !repo) {
-          throw new Error('Invalid GitHub URL format. Use https://github.com/owner/repo');
+          throw new Error('Invalid GitHub URL format. Use https://github.com/owner/repo or select "Local Folder" tab.');
         }
 
         // Fetch manifests from GitHub API
@@ -122,6 +204,12 @@ export const RepoToDiagramModal: React.FC<Props> = ({
         }
 
         const result = parseManifestsToDiagram(fetchedFiles, repo);
+        setAnalysisResult(result);
+      } else if (tab === 'folder') {
+        if (localFolderFiles.length === 0) {
+          throw new Error('Please select a local project folder first.');
+        }
+        const result = parseManifestsToDiagram(localFolderFiles, localFolderName || 'Local Project');
         setAnalysisResult(result);
       } else {
         // Direct manifest text analysis
@@ -187,7 +275,18 @@ export const RepoToDiagramModal: React.FC<Props> = ({
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
-            <span>GitHub Repository URL</span>
+            <span>GitHub URL</span>
+          </button>
+          <button
+            onClick={() => { setTab('folder'); setAnalysisResult(null); }}
+            className={`pb-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer ${
+              tab === 'folder'
+                ? 'border-sky-400 text-sky-300'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Folder className="w-3.5 h-3.5 text-amber-400" />
+            <span>Local Folder</span>
           </button>
           <button
             onClick={() => { setTab('paste'); setAnalysisResult(null); }}
@@ -198,7 +297,7 @@ export const RepoToDiagramModal: React.FC<Props> = ({
             }`}
           >
             <FileCode className="w-3.5 h-3.5" />
-            <span>Paste Manifest (docker-compose / k8s)</span>
+            <span>Paste Manifest</span>
           </button>
         </div>
 
@@ -211,7 +310,7 @@ export const RepoToDiagramModal: React.FC<Props> = ({
             </div>
           )}
 
-          {tab === 'url' ? (
+          {tab === 'url' && (
             <div className="space-y-2">
               <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                 Public GitHub Repository URL
@@ -227,7 +326,76 @@ export const RepoToDiagramModal: React.FC<Props> = ({
                 Scans for <code>docker-compose.yml</code>, <code>package.json</code>, <code>go.mod</code>, and IaC files to reverse-engineer nodes and connections.
               </p>
             </div>
-          ) : (
+          )}
+
+          {tab === 'folder' && (
+            <div className="space-y-3">
+              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                Select Local Codebase / Project Folder
+              </label>
+              
+              <div className="p-6 rounded-2xl border-2 border-dashed border-slate-700 hover:border-sky-500/50 bg-slate-950/60 flex flex-col items-center justify-center text-center gap-3 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Folder className="w-6 h-6" />
+                </div>
+
+                {localFolderName ? (
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-100 text-sm">📁 {localFolderName}</p>
+                    <p className="text-[11px] text-emerald-400 font-mono">
+                      ✓ {localFolderFiles.length} manifest file(s) identified
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-200">Pick project root folder (e.g. D:\contable_next)</p>
+                    <p className="text-[11px] text-slate-400 max-w-sm">
+                      Browser will scan for <code>docker-compose.yml</code>, <code>package.json</code>, <code>go.mod</code>, <code>requirements.txt</code>, and <code>.tf</code> files.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handlePickLocalFolder}
+                    className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-500/20 cursor-pointer"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>Choose Directory</span>
+                  </button>
+
+                  <label className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 cursor-pointer">
+                    <span>Alternative File Picker</span>
+                    <input
+                      type="file"
+                      // @ts-ignore
+                      webkitdirectory=""
+                      directory=""
+                      multiple
+                      onChange={handleFolderInputChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {localFolderFiles.length > 0 && (
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Found Manifests:</span>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {localFolderFiles.map((f, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] border border-slate-700">
+                        📄 {f.path}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === 'paste' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
