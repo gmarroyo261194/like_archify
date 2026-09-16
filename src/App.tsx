@@ -66,7 +66,9 @@ function irToCanvas(ir: ArchifyDiagramIR): { nodes: Node[]; edges: Edge[] } {
       gitUrl: n.git_url,
       metadata: n.metadata,
       preset: ir.meta.preset,
-      theme: ir.meta.theme
+      theme: ir.meta.theme,
+      isHighlighted: false,
+      isDimmed: false
     }
   }));
 
@@ -82,7 +84,9 @@ function irToCanvas(ir: ArchifyDiagramIR): { nodes: Node[]; edges: Edge[] } {
       label: e.label,
       protocol: e.protocol,
       animated: e.animated !== false,
-      latency: e.latency
+      latency: e.latency,
+      isHighlighted: false,
+      isDimmed: false
     }
   }));
 
@@ -220,6 +224,26 @@ export function App() {
     return (edges.find(e => e.id === selectedEdgeId) as Edge<ArchifyEdgeData>) || null;
   }, [edges, selectedEdgeId]);
 
+  const handleClearTrace = useCallback(() => {
+    setNodes(nds => nds.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        isHighlighted: false,
+        isDimmed: false
+      }
+    })));
+    setEdges(eds => eds.map(e => ({
+      ...e,
+      data: {
+        ...(e.data || {}),
+        isHighlighted: false,
+        isDimmed: false
+      }
+    })));
+    setIsTracingActive(false);
+  }, [setNodes, setEdges]);
+
   const handleSelectProject = useCallback((project: ArchifyProject) => {
     setActiveProjectId(project.id);
     setActiveProject(project);
@@ -235,7 +259,7 @@ export function App() {
     setSelectedEdgeId(null);
     handleClearTrace();
     confetti({ particleCount: 40, spread: 50, origin: { y: 0.1 } });
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, handleClearTrace]);
 
   const handleUpdateProjectTitle = useCallback((newTitle: string) => {
     setMeta(m => ({ ...m, title: newTitle }));
@@ -275,7 +299,9 @@ export function App() {
         tech: item.tech,
         status: 'healthy',
         preset,
-        theme
+        theme,
+        isHighlighted: false,
+        isDimmed: false
       }
     };
     setNodes(nds => [...nds, newNode]);
@@ -334,7 +360,9 @@ export function App() {
         tech: item.tech,
         status: 'healthy',
         preset,
-        theme
+        theme,
+        isHighlighted: false,
+        isDimmed: false
       }
     };
     setNodes(nds => [...nds, newNode]);
@@ -483,33 +511,27 @@ export function App() {
     setIsTracingActive(true);
   }, [edges, setNodes, setEdges]);
 
-  const handleClearTrace = useCallback(() => {
+  const handleChangePreset = useCallback((newPreset: PresetType) => {
+    setPreset(newPreset);
     setNodes(nds => nds.map(n => ({
       ...n,
-      data: {
-        ...n.data,
-        isHighlighted: false,
-        isDimmed: false
+      data: { 
+        ...n.data, 
+        preset: newPreset,
+        isDimmed: false,
+        isHighlighted: false
       }
     })));
     setEdges(eds => eds.map(e => ({
       ...e,
       data: {
         ...(e.data || {}),
-        isHighlighted: false,
-        isDimmed: false
+        isDimmed: false,
+        isHighlighted: false
       }
     })));
     setIsTracingActive(false);
   }, [setNodes, setEdges]);
-
-  const handleChangePreset = useCallback((newPreset: PresetType) => {
-    setPreset(newPreset);
-    setNodes(nds => nds.map(n => ({
-      ...n,
-      data: { ...n.data, preset: newPreset }
-    })));
-  }, [setNodes]);
 
   const handleToggleTheme = useCallback(() => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -598,6 +620,9 @@ export function App() {
           onPaneClick={() => {
             setSelectedNodeId(null);
             setSelectedEdgeId(null);
+            if (isTracingActive) {
+              handleClearTrace();
+            }
           }}
           onDrop={onDrop}
           onDragOver={onDragOver}
@@ -611,6 +636,8 @@ export function App() {
             onUpdateNode={handleUpdateNode}
             onDeleteNode={handleDeleteNode}
             onTraceReach={handleTraceReach}
+            onClearReach={handleClearTrace}
+            isTracingActive={isTracingActive}
           />
         )}
 

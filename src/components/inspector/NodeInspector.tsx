@@ -1,13 +1,15 @@
 import React from 'react';
 import { Node } from '@xyflow/react';
 import { ArchifyNodeData, NodeRole } from '../../types/archify';
-import { Trash2, ExternalLink, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
+import { Trash2, ExternalLink, ArrowUpRight, ArrowDownRight, EyeOff } from 'lucide-react';
 
 interface Props {
   selectedNode: Node<ArchifyNodeData> | null;
   onUpdateNode: (id: string, updates: Partial<ArchifyNodeData>) => void;
   onDeleteNode: (id: string) => void;
   onTraceReach: (nodeId: string, direction: 'upstream' | 'downstream') => void;
+  onClearReach?: () => void;
+  isTracingActive?: boolean;
 }
 
 const ROLES: NodeRole[] = [
@@ -19,7 +21,9 @@ export const NodeInspector: React.FC<Props> = ({
   selectedNode,
   onUpdateNode,
   onDeleteNode,
-  onTraceReach
+  onTraceReach,
+  onClearReach,
+  isTracingActive
 }) => {
   if (!selectedNode) return null;
 
@@ -40,7 +44,7 @@ export const NodeInspector: React.FC<Props> = ({
         <button
           onClick={() => onDeleteNode(selectedNode.id)}
           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-          title="Delete Node (Del)"
+          title="Delete Node"
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -155,9 +159,20 @@ export const NodeInspector: React.FC<Props> = ({
 
         {/* Reach Tracing Tools */}
         <div className="pt-3 border-t border-slate-800">
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Archify Reach Tracing
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Archify Reach Tracing
+            </label>
+            {isTracingActive && onClearReach && (
+              <button
+                onClick={onClearReach}
+                className="text-[10px] text-sky-400 hover:underline flex items-center gap-1"
+              >
+                <EyeOff className="w-3 h-3" />
+                <span>Clear</span>
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => onTraceReach(selectedNode.id, 'upstream')}
