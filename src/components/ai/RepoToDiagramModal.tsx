@@ -48,15 +48,53 @@ export const RepoToDiagramModal: React.FC<Props> = ({
 }) => {
   const [tab, setTab] = useState<'url' | 'folder' | 'paste'>('url');
   const [githubUrl, setGithubUrl] = useState('https://github.com/tt-a1i/archify');
+  const [localPathInput, setLocalPathInput] = useState('D:\\contable_next');
   const [localFolderFiles, setLocalFolderFiles] = useState<{ path: string; content: string }[]>([]);
   const [localFolderName, setLocalFolderName] = useState('');
   const [manifestText, setManifestText] = useState(SAMPLE_DOCKER_COMPOSE);
   const [manifestPath, setManifestPath] = useState('docker-compose.yml');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isScanningPath, setIsScanningPath] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<RepoAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleScanPathDirect = async (overridePath?: string) => {
+    const targetPath = (overridePath || localPathInput).trim();
+    if (!targetPath) {
+      setError('Please provide a valid folder path (e.g. D:\\contable_next or /home/user/project).');
+      return;
+    }
+
+    setIsScanningPath(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/scan-local-dir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dirPath: targetPath })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to scan directory from local server.');
+      }
+
+      setLocalFolderName(data.rootName || targetPath);
+      setLocalFolderFiles(data.files || []);
+
+      if (!data.files || data.files.length === 0) {
+        setError(`No manifest files found in "${targetPath}". Make sure docker-compose, package.json or go.mod exist.`);
+      }
+    } catch (err: any) {
+      console.warn('Local scan server failed, fallbacking or showing error:', err);
+      setError(err?.message || 'Cannot access local path. Ensure dev server is running or use File Picker below.');
+    } finally {
+      setIsScanningPath(false);
+    }
+  };
 
   const handlePickLocalFolder = async () => {
     setError(null);
@@ -331,42 +369,71 @@ export const RepoToDiagramModal: React.FC<Props> = ({
           {tab === 'folder' && (
             <div className="space-y-3">
               <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Select Local Codebase / Project Folder
+                Direct Path Input (Instant Local Scan)
               </label>
               
-              <div className="p-6 rounded-2xl border-2 border-dashed border-slate-700 hover:border-sky-500/50 bg-slate-950/60 flex flex-col items-center justify-center text-center gap-3 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Folder className="w-6 h-6" />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={localPathInput}
+                  onChange={(e) => setLocalPathInput(e.target.value)}
+                  placeholder="e.g. D:\contable_next or /var/www/my-project"
+                  className="flex-1 px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleScanPathDirect()}
+                  disabled={isScanningPath || !localPathInput.trim()}
+                  className="px-4 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer text-xs shadow-md shadow-sky-500/20"
+                >
+                  {isScanningPath ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>Scan Path</span>
+                </button>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-800"></div>
+                <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-500 tracking-wider">or browse via dialog</span>
+                <div className="flex-grow border-t border-slate-800"></div>
+              </div>
+
+              <div className="p-4 rounded-2xl border-2 border-dashed border-slate-700 hover:border-sky-500/50 bg-slate-950/60 flex flex-col items-center justify-center text-center gap-2.5 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Folder className="w-5 h-5" />
                 </div>
 
                 {localFolderName ? (
-                  <div className="space-y-1">
-                    <p className="font-bold text-slate-100 text-sm">📁 {localFolderName}</p>
-                    <p className="text-[11px] text-emerald-400 font-mono">
-                      ✓ {localFolderFiles.length} manifest file(s) identified
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-slate-100 text-xs">📁 {localFolderName}</p>
+                    <p className="text-[10px] text-emerald-400 font-mono">
+                      ✓ {localFolderFiles.length} manifest file(s) loaded
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    <p className="font-bold text-slate-200">Pick project root folder (e.g. D:\contable_next)</p>
-                    <p className="text-[11px] text-slate-400 max-w-sm">
-                      Browser will scan for <code>docker-compose.yml</code>, <code>package.json</code>, <code>go.mod</code>, <code>requirements.txt</code>, and <code>.tf</code> files.
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-slate-200 text-xs">Browse local folders</p>
+                    <p className="text-[10px] text-slate-400 max-w-sm">
+                      Select directory with <code>docker-compose.yml</code>, <code>package.json</code>, <code>go.mod</code>, <code>.tf</code>
                     </p>
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2 pt-0.5">
                   <button
                     type="button"
                     onClick={handlePickLocalFolder}
-                    className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-500/20 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer border border-slate-700"
                   >
                     <UploadCloud className="w-3.5 h-3.5" />
-                    <span>Choose Directory</span>
+                    <span>Native Directory Picker</span>
                   </button>
 
-                  <label className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 cursor-pointer">
-                    <span>Alternative File Picker</span>
+                  <label className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer border border-slate-700">
+                    <span>File Input Picker</span>
                     <input
                       type="file"
                       // @ts-ignore
@@ -383,7 +450,7 @@ export const RepoToDiagramModal: React.FC<Props> = ({
               {localFolderFiles.length > 0 && (
                 <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Found Manifests:</span>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-1.5 pt-1 max-h-24 overflow-y-auto">
                     {localFolderFiles.map((f, i) => (
                       <span key={i} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] border border-slate-700">
                         📄 {f.path}
