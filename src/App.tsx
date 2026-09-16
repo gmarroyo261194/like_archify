@@ -3,6 +3,7 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  useReactFlow,
   Connection,
   Node,
   Edge
@@ -464,12 +465,30 @@ export function App() {
     setEdges(eds => addEdge(newEdge, eds));
   }, [setEdges]);
 
+  const { screenToFlowPosition, getViewport } = useReactFlow();
+
   const handleAddNode = useCallback((item: any) => {
     const id = `node-${Date.now()}`;
+    
+    // Calculate center of current viewport in canvas coordinates
+    const container = containerRef.current;
+    let targetPos = { x: 350, y: 200 };
+    
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const flowPos = screenToFlowPosition({ x: centerX, y: centerY });
+      targetPos = {
+        x: flowPos.x - 100 + (Math.random() * 40 - 20),
+        y: flowPos.y - 40 + (Math.random() * 40 - 20)
+      };
+    }
+
     const newNode: Node = {
       id,
       type: 'archifyNode',
-      position: { x: 350 + Math.random() * 100, y: 200 + Math.random() * 100 },
+      position: targetPos,
       data: {
         id,
         label: item.label,
@@ -488,29 +507,43 @@ export function App() {
     setNodes(nds => [...nds, newNode]);
     setSelectedNodeId(id);
     setSelectedEdgeId(null);
-  }, [preset, theme, setNodes]);
+  }, [preset, theme, screenToFlowPosition, setNodes]);
 
   const handleAddBoundary = useCallback(() => {
     const id = `b-${Date.now()}`;
+    const container = containerRef.current;
+    let targetPos = { x: 100, y: 100 };
+
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const flowPos = screenToFlowPosition({ x: centerX, y: centerY });
+      targetPos = {
+        x: flowPos.x - 200,
+        y: flowPos.y - 150
+      };
+    }
+
     const newBoundary: Node = {
       id,
       type: 'boundaryNode',
-      position: { x: 100, y: 100 },
+      position: targetPos,
       data: {
         id,
-        label: 'New Secure Scope / Zone',
-        type: 'vpc'
+        label: 'New Scope / Zone',
+        type: activeDiagram.diagram_type === 'sequence' ? 'frame' : 'vpc'
       },
       style: {
         width: 400,
-        height: 350,
+        height: 300,
         zIndex: -1
       }
     };
     setNodes(nds => [newBoundary, ...nds]);
     setSelectedNodeId(id);
     setSelectedEdgeId(null);
-  }, [setNodes]);
+  }, [screenToFlowPosition, activeDiagram.diagram_type, setNodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -523,15 +556,21 @@ export function App() {
     if (!dataStr) return;
 
     const item = JSON.parse(dataStr);
-    const bounds = containerRef.current?.getBoundingClientRect();
-    const x = bounds ? event.clientX - bounds.left : 200;
-    const y = bounds ? event.clientY - bounds.top : 200;
+    
+    // Convert mouse screen coordinates to canvas flow coordinate system
+    const flowPosition = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
 
     const id = `node-${Date.now()}`;
     const newNode: Node = {
       id,
       type: 'archifyNode',
-      position: { x, y },
+      position: {
+        x: flowPosition.x - 70, // center on cursor
+        y: flowPosition.y - 30
+      },
       data: {
         id,
         label: item.label,
@@ -550,7 +589,7 @@ export function App() {
     setNodes(nds => [...nds, newNode]);
     setSelectedNodeId(id);
     setSelectedEdgeId(null);
-  }, [preset, theme, setNodes]);
+  }, [preset, theme, screenToFlowPosition, setNodes]);
 
   const handleUpdateNode = useCallback((id: string, updates: Partial<ArchifyNodeData>) => {
     setNodes(nds => nds.map(n => {
