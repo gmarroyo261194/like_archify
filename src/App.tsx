@@ -11,7 +11,7 @@ import { toPng } from 'html-to-image';
 import confetti from 'canvas-confetti';
 
 import { 
-  ArchifyDiagramIR, ArchifyNodeData, ArchifyEdgeData, 
+  ArchifyDiagramIR, ArchifyNodeData, ArchifyEdgeData, ArchifyBoundaryData,
   PresetType, ThemeType, NodeRole 
 } from './types/archify';
 import { ArchifyProject } from './types/project';
@@ -20,6 +20,7 @@ import { TopToolbar } from './components/toolbar/TopToolbar';
 import { ComponentPalette } from './components/sidebar/ComponentPalette';
 import { NodeInspector } from './components/inspector/NodeInspector';
 import { EdgeInspector } from './components/inspector/EdgeInspector';
+import { BoundaryInspector } from './components/inspector/BoundaryInspector';
 import { RouteInspectorBar } from './components/tracing/RouteInspectorBar';
 import { DiagramCanvas } from './components/canvas/DiagramCanvas';
 import { ExportModal } from './components/export/ExportModal';
@@ -207,6 +208,14 @@ export function App() {
     return null;
   }, [nodes, selectedNodeId]);
 
+  const selectedBoundary = useMemo(() => {
+    const found = nodes.find(n => n.id === selectedNodeId);
+    if (found && found.type === 'boundaryNode') {
+      return found as Node<ArchifyBoundaryData>;
+    }
+    return null;
+  }, [nodes, selectedNodeId]);
+
   const selectedEdge = useMemo(() => {
     return (edges.find(e => e.id === selectedEdgeId) as Edge<ArchifyEdgeData>) || null;
   }, [edges, selectedEdgeId]);
@@ -334,6 +343,15 @@ export function App() {
   }, [preset, theme, setNodes]);
 
   const handleUpdateNode = useCallback((id: string, updates: Partial<ArchifyNodeData>) => {
+    setNodes(nds => nds.map(n => {
+      if (n.id === id) {
+        return { ...n, data: { ...n.data, ...updates } };
+      }
+      return n;
+    }));
+  }, [setNodes]);
+
+  const handleUpdateBoundary = useCallback((id: string, updates: Partial<ArchifyBoundaryData>) => {
     setNodes(nds => nds.map(n => {
       if (n.id === id) {
         return { ...n, data: { ...n.data, ...updates } };
@@ -593,6 +611,14 @@ export function App() {
             onUpdateNode={handleUpdateNode}
             onDeleteNode={handleDeleteNode}
             onTraceReach={handleTraceReach}
+          />
+        )}
+
+        {selectedBoundary && (
+          <BoundaryInspector
+            selectedBoundary={selectedBoundary}
+            onUpdateBoundary={handleUpdateBoundary}
+            onDeleteBoundary={handleDeleteNode}
           />
         )}
 
