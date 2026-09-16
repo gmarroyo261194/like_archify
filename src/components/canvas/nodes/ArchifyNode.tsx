@@ -32,7 +32,12 @@ const ROLE_COLORS: Record<NodeRole, { bg: string; text: string; border: string; 
   ai: { bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-400', border: 'border-fuchsia-500/40', glow: 'shadow-fuchsia-500/20' },
   storage: { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/40', glow: 'shadow-teal-500/20' },
   security: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/40', glow: 'shadow-rose-500/20' },
-  external: { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/40', glow: 'shadow-slate-500/20' }
+  external: { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/40', glow: 'shadow-slate-500/20' },
+  decision: { bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/60', glow: 'shadow-amber-500/30' },
+  event: { bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/60', glow: 'shadow-emerald-500/30' },
+  state: { bg: 'bg-violet-500/15', text: 'text-violet-300', border: 'border-violet-500/60', glow: 'shadow-violet-500/30' },
+  stage: { bg: 'bg-sky-500/15', text: 'text-sky-300', border: 'border-sky-500/60', glow: 'shadow-sky-500/30' },
+  participant: { bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/60', glow: 'shadow-blue-500/30' }
 };
 
 interface CustomNodeProps extends NodeProps {
@@ -44,6 +49,7 @@ interface CustomNodeProps extends NodeProps {
 
 export const ArchifyNode = memo(({ data, selected }: CustomNodeProps) => {
   const role = data.role || 'service';
+  const shape = data.shape || 'box';
   const roleStyle = ROLE_COLORS[role] || ROLE_COLORS.service;
   const IconComponent = (data.icon && ICON_MAP[data.icon]) ? ICON_MAP[data.icon] : Server;
   const preset = data.preset || 'signal-flow';
@@ -51,13 +57,13 @@ export const ArchifyNode = memo(({ data, selected }: CustomNodeProps) => {
   const isHighlighted = data.isHighlighted;
   const isDimmed = data.isDimmed;
 
-  let containerStyle = 'bg-[#111726]/90 border-[#1e293b] text-slate-100 backdrop-blur-md';
+  let containerBg = 'bg-[#111726]/90 border-[#1e293b] text-slate-100 backdrop-blur-md';
   if (preset === 'blueprint') {
-    containerStyle = 'bg-[#0b192e]/95 border-[#1d4ed8] text-blue-100 font-mono';
+    containerBg = 'bg-[#0b192e]/95 border-[#1d4ed8] text-blue-100 font-mono';
   } else if (preset === 'classic') {
-    containerStyle = 'bg-[#1e293b]/95 border-slate-700 text-slate-100 shadow-xl';
+    containerBg = 'bg-[#1e293b]/95 border-slate-700 text-slate-100 shadow-xl';
   } else if (preset === 'minimal') {
-    containerStyle = 'bg-[#0f172a]/95 border-slate-800 text-slate-200';
+    containerBg = 'bg-[#0f172a]/95 border-slate-800 text-slate-200';
   }
 
   const highlightBorder = isHighlighted
@@ -66,9 +72,148 @@ export const ArchifyNode = memo(({ data, selected }: CustomNodeProps) => {
     ? 'border-sky-400 ring-2 ring-sky-400/50 shadow-[0_0_15px_rgba(56,189,248,0.3)]'
     : roleStyle.border;
 
+  // 1. Diamond Shape (Workflow Decision Gate)
+  if (shape === 'diamond') {
+    return (
+      <div
+        className={`relative w-[130px] h-[130px] flex items-center justify-center transition-all duration-200 cursor-pointer ${
+          isDimmed ? 'opacity-30 filter grayscale' : 'opacity-100'
+        }`}
+      >
+        <Handle type="target" position={Position.Top} className="!-top-1" />
+        <Handle type="source" position={Position.Bottom} className="!-bottom-1" />
+        <Handle type="target" position={Position.Left} id="left-t" className="!-left-1" />
+        <Handle type="source" position={Position.Right} id="right-s" className="!-right-1" />
+
+        {/* Rotated Diamond Background */}
+        <div
+          className={`absolute inset-2 rotate-45 rounded-xl border-2 shadow-lg transition-all ${containerBg} ${highlightBorder}`}
+        />
+
+        {/* Centered Content */}
+        <div className="relative z-10 text-center px-3 max-w-[110px] pointer-events-none">
+          <div className="flex justify-center mb-1">
+            <IconComponent className={`w-4 h-4 ${roleStyle.text}`} />
+          </div>
+          <h5 className="text-[11px] font-bold text-white leading-tight truncate">
+            {data.label}
+          </h5>
+          {data.subtitle && (
+            <p className="text-[9px] text-slate-400 line-clamp-1 mt-0.5">
+              {data.subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Circle Shape (Workflow Start / End Events)
+  if (shape === 'circle') {
+    return (
+      <div
+        className={`relative w-[100px] h-[100px] rounded-full border-2 flex flex-col items-center justify-center p-2 text-center transition-all duration-200 cursor-pointer shadow-lg ${containerBg} ${highlightBorder} ${
+          isDimmed ? 'opacity-30 filter grayscale' : 'opacity-100'
+        }`}
+      >
+        <Handle type="target" position={Position.Top} className="!-top-1" />
+        <Handle type="source" position={Position.Bottom} className="!-bottom-1" />
+        <Handle type="target" position={Position.Left} id="left-t" className="!-left-1" />
+        <Handle type="source" position={Position.Right} id="right-s" className="!-right-1" />
+
+        <div className={`p-1.5 rounded-full mb-1 ${roleStyle.bg} ${roleStyle.text}`}>
+          <IconComponent className="w-4 h-4" />
+        </div>
+        <h5 className="text-[10px] font-bold text-white leading-tight truncate max-w-[80px]">
+          {data.label}
+        </h5>
+      </div>
+    );
+  }
+
+  // 3. State Shape (Finite State Machine / Lifecycle)
+  if (shape === 'state') {
+    return (
+      <div
+        className={`relative min-w-[180px] max-w-[240px] rounded-2xl border-2 p-3 transition-all duration-200 cursor-pointer shadow-lg ${containerBg} ${highlightBorder} ${
+          isDimmed ? 'opacity-30 filter grayscale' : 'opacity-100'
+        }`}
+      >
+        <Handle type="target" position={Position.Top} className="!-top-1" />
+        <Handle type="source" position={Position.Bottom} className="!-bottom-1" />
+        <Handle type="target" position={Position.Left} id="left-t" className="!-left-1" />
+        <Handle type="source" position={Position.Right} id="right-s" className="!-right-1" />
+
+        <div className="flex items-center justify-between gap-1 mb-1.5">
+          <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase rounded-md border ${roleStyle.bg} ${roleStyle.text} ${roleStyle.border}`}>
+            STATE
+          </span>
+          <div
+            className={`w-2 h-2 rounded-full ${
+              data.status === 'warning'
+                ? 'bg-amber-400 animate-pulse'
+                : data.status === 'degraded'
+                ? 'bg-rose-500'
+                : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
+            }`}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <IconComponent className={`w-4 h-4 ${roleStyle.text} flex-shrink-0`} />
+          <h4 className="text-xs font-bold text-white font-mono truncate">
+            {data.label}
+          </h4>
+        </div>
+        {data.subtitle && (
+          <p className="text-[10px] text-slate-400 mt-1 line-clamp-1 font-sans">
+            {data.subtitle}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // 4. Participant Shape (Sequence Diagram Lifeline Actor)
+  if (shape === 'participant') {
+    return (
+      <div
+        className={`relative min-w-[180px] max-w-[220px] rounded-xl border-2 p-3 transition-all duration-200 cursor-pointer shadow-lg ${containerBg} ${highlightBorder} ${
+          isDimmed ? 'opacity-30 filter grayscale' : 'opacity-100'
+        }`}
+      >
+        <Handle type="target" position={Position.Top} className="!-top-1" />
+        <Handle type="source" position={Position.Bottom} className="!-bottom-1" />
+        <Handle type="target" position={Position.Left} id="left-t" className="!-left-1" />
+        <Handle type="source" position={Position.Right} id="right-s" className="!-right-1" />
+
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className={`p-1.5 rounded-lg border ${roleStyle.bg} ${roleStyle.border} ${roleStyle.text}`}>
+            <IconComponent className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="text-xs font-bold text-white truncate">
+              {data.label}
+            </h4>
+            <p className="text-[10px] text-slate-400 truncate">
+              {data.subtitle || 'Participant'}
+            </p>
+          </div>
+        </div>
+
+        {data.tech && (
+          <div className="text-[10px] font-mono text-sky-400 bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800 truncate">
+            {data.tech}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 5. Default Box Shape (Architecture / Dataflow)
   return (
     <div
-      className={`relative min-w-[210px] max-w-[280px] rounded-xl border p-3.5 transition-all duration-200 cursor-pointer shadow-lg ${containerStyle} ${highlightBorder} ${
+      className={`relative min-w-[210px] max-w-[280px] rounded-xl border p-3.5 transition-all duration-200 cursor-pointer shadow-lg ${containerBg} ${highlightBorder} ${
         isDimmed ? 'opacity-30 filter grayscale' : 'opacity-100'
       }`}
     >

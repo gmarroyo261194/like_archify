@@ -114,10 +114,42 @@ export function generateStandaloneHTML(ir: ArchifyDiagramIR): string {
       transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
       z-index: 5;
     }
+    .node-card.shape-diamond {
+      width: 120px;
+      height: 120px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transform: rotate(45deg);
+    }
+    .node-card.shape-diamond > * {
+      transform: rotate(-45deg);
+    }
+    .node-card.shape-circle {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .node-card.shape-state {
+      width: 200px;
+      border-radius: 20px;
+    }
     .node-card:hover {
       transform: translateY(-2px);
       border-color: var(--accent);
       box-shadow: 0 15px 30px -5px rgba(56, 189, 248, 0.25);
+    }
+    .node-card.shape-diamond:hover {
+      transform: rotate(45deg) scale(1.05);
     }
     .node-card.highlighted {
       border-color: #22d3ee !important;
@@ -183,6 +215,7 @@ export function generateStandaloneHTML(ir: ArchifyDiagramIR): string {
       </div>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="badge">Type: ${ir.diagram_type}</span>
       <span class="badge">Preset: ${ir.meta.preset}</span>
       <span class="badge">${ir.nodes.length} Nodes · ${ir.edges.length} Edges</span>
       <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
@@ -233,7 +266,7 @@ export function generateStandaloneHTML(ir: ArchifyDiagramIR): string {
 
     // Render Boundaries
     const bLayer = document.getElementById('boundaries-layer');
-    diagram.boundaries.forEach(b => {
+    (diagram.boundaries || []).forEach(b => {
       const el = document.createElement('div');
       el.className = 'boundary-box';
       el.style.left = b.position.x + 'px';
@@ -246,21 +279,34 @@ export function generateStandaloneHTML(ir: ArchifyDiagramIR): string {
 
     // Render Nodes
     const nLayer = document.getElementById('nodes-layer');
-    diagram.nodes.forEach(n => {
+    (diagram.nodes || []).forEach(n => {
       const el = document.createElement('div');
-      el.className = 'node-card';
+      const shapeClass = n.shape ? 'shape-' + n.shape : 'shape-box';
+      el.className = 'node-card ' + shapeClass;
       el.id = 'node-' + n.id;
       el.style.left = n.position.x + 'px';
       el.style.top = n.position.y + 'px';
-      el.innerHTML = \`
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <span class="badge" style="font-size: 9px;">\${n.role}</span>
-          <span style="font-size: 11px; font-family: monospace; color: var(--text-muted);">\${n.port ? ':' + n.port : ''}</span>
-        </div>
-        <div style="font-size: 14px; font-weight: 700; color: var(--text);">\${n.label}</div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">\${n.subtitle || ''}</div>
-        \${n.tech ? \`<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--card-border); font-size: 11px; font-family: monospace; color: var(--accent);">\${n.tech}</div>\` : ''}
-      \`;
+      
+      if (n.shape === 'circle') {
+        el.innerHTML = \`
+          <div style="font-size: 11px; font-weight: 700; color: var(--text);">\${n.label}</div>
+        \`;
+      } else if (n.shape === 'diamond') {
+        el.innerHTML = \`
+          <div style="font-size: 11px; font-weight: 700; color: var(--text);">\${n.label}</div>
+        \`;
+      } else {
+        el.innerHTML = \`
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="badge" style="font-size: 9px;">\${n.role}</span>
+            <span style="font-size: 11px; font-family: monospace; color: var(--text-muted);">\${n.port ? ':' + n.port : ''}</span>
+          </div>
+          <div style="font-size: 14px; font-weight: 700; color: var(--text);">\${n.label}</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">\${n.subtitle || ''}</div>
+          \${n.tech ? \`<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--card-border); font-size: 11px; font-family: monospace; color: var(--accent);">\${n.tech}</div>\` : ''}
+        \`;
+      }
+
       el.onclick = (e) => {
         e.stopPropagation();
         selectNode(n);

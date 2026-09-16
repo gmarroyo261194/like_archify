@@ -13,13 +13,21 @@ export type NodeRole =
   | 'ai' 
   | 'storage' 
   | 'security' 
-  | 'external';
+  | 'external'
+  | 'decision'
+  | 'event'
+  | 'state'
+  | 'stage'
+  | 'participant';
+
+export type NodeShape = 'box' | 'diamond' | 'circle' | 'pill' | 'participant' | 'state';
 
 export interface ArchifyNodeData extends Record<string, unknown> {
   id: string;
   label: string;
   subtitle?: string;
   role: NodeRole;
+  shape?: NodeShape;
   icon?: string;
   tech?: string;
   port?: string | number;
@@ -29,6 +37,7 @@ export interface ArchifyNodeData extends Record<string, unknown> {
   isHighlighted?: boolean;
   isDimmed?: boolean;
   reachType?: 'upstream' | 'downstream' | 'none';
+  diagramType?: DiagramType;
 }
 
 export interface ArchifyEdgeData extends Record<string, unknown> {
@@ -38,6 +47,7 @@ export interface ArchifyEdgeData extends Record<string, unknown> {
   label?: string;
   protocol?: string;
   animated?: boolean;
+  edgeType?: 'solid' | 'dashed' | 'return' | 'conditional';
   latency?: string;
   dataRate?: string;
   authType?: string;
@@ -48,7 +58,7 @@ export interface ArchifyEdgeData extends Record<string, unknown> {
 export interface ArchifyBoundaryData extends Record<string, unknown> {
   id: string;
   label: string;
-  type: 'vpc' | 'cluster' | 'subnet' | 'zone' | 'security-group';
+  type: string;
   color?: string;
 }
 
@@ -76,6 +86,7 @@ export interface ArchifyDiagramIR {
     label: string;
     subtitle?: string;
     role: NodeRole;
+    shape?: NodeShape;
     tech?: string;
     icon?: string;
     port?: string | number;
@@ -92,6 +103,7 @@ export interface ArchifyDiagramIR {
     label?: string;
     protocol?: string;
     animated?: boolean;
+    edge_type?: string;
     latency?: string;
     data_rate?: string;
     auth_type?: string;

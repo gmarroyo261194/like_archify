@@ -10,7 +10,8 @@ import {
   deleteProject, exportProjectToFile, importProjectFromFile 
 } from '../../lib/storage/projectStorage';
 import { 
-  TEMPLATE_WEB_APP, TEMPLATE_AI_AGENT, TEMPLATE_MICROSERVICES 
+  TEMPLATE_WEB_APP, TEMPLATE_WORKFLOW, TEMPLATE_SEQUENCE, 
+  TEMPLATE_DATAFLOW, TEMPLATE_LIFECYCLE 
 } from '../../lib/templates/defaultTemplates';
 
 interface Props {
@@ -52,11 +53,25 @@ export const ProjectsModal: React.FC<Props> = ({
   const handleCreate = () => {
     if (!newTitle.trim()) return;
     let tplIR = undefined;
-    if (selectedTemplate === 'web') tplIR = TEMPLATE_WEB_APP;
-    if (selectedTemplate === 'ai') tplIR = TEMPLATE_AI_AGENT;
-    if (selectedTemplate === 'micro') tplIR = TEMPLATE_MICROSERVICES;
+    let finalType = newType;
+    if (selectedTemplate === 'web') {
+      tplIR = TEMPLATE_WEB_APP;
+      finalType = 'architecture';
+    } else if (selectedTemplate === 'workflow') {
+      tplIR = TEMPLATE_WORKFLOW;
+      finalType = 'workflow';
+    } else if (selectedTemplate === 'sequence') {
+      tplIR = TEMPLATE_SEQUENCE;
+      finalType = 'sequence';
+    } else if (selectedTemplate === 'dataflow') {
+      tplIR = TEMPLATE_DATAFLOW;
+      finalType = 'dataflow';
+    } else if (selectedTemplate === 'lifecycle') {
+      tplIR = TEMPLATE_LIFECYCLE;
+      finalType = 'lifecycle';
+    }
 
-    const created = createNewProject(newTitle.trim(), newType, tplIR);
+    const created = createNewProject(newTitle.trim(), finalType, tplIR);
     refreshList();
     setIsCreatingNew(false);
     setNewTitle('');
@@ -277,9 +292,11 @@ export const ProjectsModal: React.FC<Props> = ({
                   className="w-full px-3 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-sky-500"
                 >
                   <option value="none">Blank Canvas</option>
-                  <option value="web">🌐 3-Tier Web App</option>
-                  <option value="ai">🤖 Multi-Agent Workflow</option>
-                  <option value="micro">⚡ Financial Event-Bus</option>
+                  <option value="web">🌐 3-Tier Web App (Architecture)</option>
+                  <option value="workflow">🤖 AI Agent Cycle (Workflow)</option>
+                  <option value="sequence">🔐 OAuth2 & JWT (Sequence)</option>
+                  <option value="dataflow">⚡ Vector Pipeline (Dataflow)</option>
+                  <option value="lifecycle">🔄 Order State Machine (Lifecycle)</option>
                 </select>
               </div>
             </div>

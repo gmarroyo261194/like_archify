@@ -1,44 +1,110 @@
 import React, { useState } from 'react';
 import { 
   Server, Database, Cloud, Cpu, Shield, Bot, Layers, Network, Globe, 
-  HardDrive, Activity, Plus, Search, Box, ChevronLeft, ChevronRight,
-  PanelLeftClose, PanelLeft
+  HardDrive, Activity, Plus, Search, Box, PanelLeftClose, PanelLeft,
+  GitBranch, ArrowRightLeft, Radio, RefreshCw, CheckCircle2
 } from 'lucide-react';
-import { NodeRole } from '../../types/archify';
+import { NodeRole, NodeShape, DiagramType } from '../../types/archify';
 
-interface PaletteItem {
+export interface PaletteItem {
   label: string;
   role: NodeRole;
+  shape?: NodeShape;
   icon: string;
   iconComp: React.ElementType;
   tech: string;
   subtitle: string;
 }
 
-const PALETTE_ITEMS: PaletteItem[] = [
-  { label: 'Web / Mobile Client', role: 'client', icon: 'Globe', iconComp: Globe, tech: 'React / Next.js', subtitle: 'User Interface Application' },
-  { label: 'API Gateway / Ingress', role: 'gateway', icon: 'Layers', iconComp: Layers, tech: 'Kong / Envoy / Nginx', subtitle: 'Reverse Proxy & Traffic Router' },
-  { label: 'Microservice / Backend', role: 'service', icon: 'Server', iconComp: Server, tech: 'Node / Go / Rust', subtitle: 'Domain Business Logic' },
-  { label: 'Background Worker', role: 'worker', icon: 'Cpu', iconComp: Cpu, tech: 'Celery / BullMQ', subtitle: 'Async Job Processor' },
-  { label: 'Relational Database', role: 'database', icon: 'Database', iconComp: Database, tech: 'PostgreSQL / MySQL', subtitle: 'Transactional Storage' },
-  { label: 'In-Memory Cache', role: 'cache', icon: 'Activity', iconComp: Activity, tech: 'Redis / Memcached', subtitle: 'Low Latency Query Cache' },
-  { label: 'Message Queue / Bus', role: 'queue', icon: 'Network', iconComp: Network, tech: 'Kafka / RabbitMQ / SQS', subtitle: 'Distributed Event Stream' },
-  { label: 'AI Agent / LLM Engine', role: 'ai', icon: 'Bot', iconComp: Bot, tech: 'Claude / Gemini / OpenAI', subtitle: 'Generative Model Reasoning' },
-  { label: 'Object Storage / S3', role: 'storage', icon: 'HardDrive', iconComp: HardDrive, tech: 'AWS S3 / Cloudflare R2', subtitle: 'Blob & Media Storage' },
-  { label: 'Security & Auth Svc', role: 'security', icon: 'Shield', iconComp: Shield, tech: 'OAuth2 / Keycloak', subtitle: 'Identity & Access Control' },
-  { label: 'Third-Party SaaS', role: 'external', icon: 'Cloud', iconComp: Cloud, tech: 'Stripe / SendGrid', subtitle: 'External REST Provider' },
-];
+const PALETTES_BY_TYPE: Record<DiagramType, { title: string; boundaryName: string; items: PaletteItem[] }> = {
+  architecture: {
+    title: 'Architecture Blocks',
+    boundaryName: '+ Add VPC / Zone Boundary',
+    items: [
+      { label: 'Web / Mobile Client', role: 'client', shape: 'box', icon: 'Globe', iconComp: Globe, tech: 'React / Next.js', subtitle: 'User Interface Application' },
+      { label: 'API Gateway / Ingress', role: 'gateway', shape: 'box', icon: 'Layers', iconComp: Layers, tech: 'Kong / Envoy / Nginx', subtitle: 'Reverse Proxy & Traffic Router' },
+      { label: 'Microservice / Backend', role: 'service', shape: 'box', icon: 'Server', iconComp: Server, tech: 'Node / Go / Rust', subtitle: 'Domain Business Logic' },
+      { label: 'Background Worker', role: 'worker', shape: 'box', icon: 'Cpu', iconComp: Cpu, tech: 'Celery / BullMQ', subtitle: 'Async Job Processor' },
+      { label: 'Relational Database', role: 'database', shape: 'box', icon: 'Database', iconComp: Database, tech: 'PostgreSQL / MySQL', subtitle: 'Transactional Storage' },
+      { label: 'In-Memory Cache', role: 'cache', shape: 'box', icon: 'Activity', iconComp: Activity, tech: 'Redis / Memcached', subtitle: 'Low Latency Query Cache' },
+      { label: 'Message Queue / Bus', role: 'queue', shape: 'box', icon: 'Network', iconComp: Network, tech: 'Kafka / RabbitMQ / SQS', subtitle: 'Distributed Event Stream' },
+      { label: 'AI Agent / LLM Engine', role: 'ai', shape: 'box', icon: 'Bot', iconComp: Bot, tech: 'Claude / Gemini / OpenAI', subtitle: 'Generative Model Reasoning' },
+      { label: 'Object Storage / S3', role: 'storage', shape: 'box', icon: 'HardDrive', iconComp: HardDrive, tech: 'AWS S3 / Cloudflare R2', subtitle: 'Blob & Media Storage' },
+      { label: 'Security & Auth Svc', role: 'security', shape: 'box', icon: 'Shield', iconComp: Shield, tech: 'OAuth2 / Keycloak', subtitle: 'Identity & Access Control' },
+      { label: 'Third-Party SaaS', role: 'external', shape: 'box', icon: 'Cloud', iconComp: Cloud, tech: 'Stripe / SendGrid', subtitle: 'External REST Provider' }
+    ]
+  },
+  workflow: {
+    title: 'Workflow Elements',
+    boundaryName: '+ Add Workflow Phase / Lane',
+    items: [
+      { label: 'Start Trigger Event', role: 'event', shape: 'circle', icon: 'Activity', iconComp: Activity, tech: 'Event Ingress', subtitle: 'Initiating workflow trigger' },
+      { label: 'Task / Execution Step', role: 'service', shape: 'box', icon: 'Server', iconComp: Server, tech: 'Action Execution', subtitle: 'Automated processing step' },
+      { label: 'Decision Gate / Branch', role: 'decision', shape: 'diamond', icon: 'Shield', iconComp: Shield, tech: 'Conditional Check', subtitle: 'Human-in-the-loop / IF logic' },
+      { label: 'AI Cognitive Agent', role: 'ai', shape: 'box', icon: 'Bot', iconComp: Bot, tech: 'LLM Reasoning', subtitle: 'Autonomous reasoning step' },
+      { label: 'TDD Test Runner Gate', role: 'decision', shape: 'diamond', icon: 'Layers', iconComp: Layers, tech: 'Vitest / Gate', subtitle: 'Pass / Fail test assertion' },
+      { label: 'End / Terminal Event', role: 'event', shape: 'circle', icon: 'CheckCircle2', iconComp: CheckCircle2, tech: 'Terminal State', subtitle: 'Final workflow outcome' }
+    ]
+  },
+  sequence: {
+    title: 'Sequence Lifelines',
+    boundaryName: '+ Add Sequence Domain Scope',
+    items: [
+      { label: 'Browser / Mobile Client', role: 'participant', shape: 'participant', icon: 'Globe', iconComp: Globe, tech: 'SPA / Mobile App', subtitle: 'Initiating user actor' },
+      { label: 'API Ingress Gateway', role: 'participant', shape: 'participant', icon: 'Layers', iconComp: Layers, tech: 'Kong / Envoy', subtitle: 'Reverse proxy router' },
+      { label: 'Identity / Auth Server', role: 'participant', shape: 'participant', icon: 'Shield', iconComp: Shield, tech: 'OAuth2 / OIDC IdP', subtitle: 'Token issuer' },
+      { label: 'Domain Core Service', role: 'participant', shape: 'participant', icon: 'Server', iconComp: Server, tech: 'Go / gRPC Service', subtitle: 'Business API worker' },
+      { label: 'Persistence Database', role: 'participant', shape: 'participant', icon: 'Database', iconComp: Database, tech: 'PostgreSQL Database', subtitle: 'State store' }
+    ]
+  },
+  dataflow: {
+    title: 'Dataflow Stages',
+    boundaryName: '+ Add Processing Stage / Zone',
+    items: [
+      { label: 'Clickstream Event Log', role: 'queue', shape: 'box', icon: 'Network', iconComp: Network, tech: 'Apache Kafka / Redpanda', subtitle: 'Raw event stream ingestion' },
+      { label: 'CDC Database Log', role: 'service', shape: 'box', icon: 'Layers', iconComp: Layers, tech: 'Debezium CDC Stream', subtitle: 'Row change replication' },
+      { label: 'Stream Processing Engine', role: 'worker', shape: 'box', icon: 'Cpu', iconComp: Cpu, tech: 'Apache Flink / Spark', subtitle: 'Real-time windowed aggregation' },
+      { label: 'Vector Embedding Stage', role: 'ai', shape: 'box', icon: 'Bot', iconComp: Bot, tech: 'Text-Embedding-3', subtitle: 'Dense vector representations' },
+      { label: 'Vector Similarity Index', role: 'database', shape: 'box', icon: 'Database', iconComp: Database, tech: 'Qdrant / Milvus', subtitle: 'HNSW vector store' },
+      { label: 'Iceberg Cold Lakehouse', role: 'storage', shape: 'box', icon: 'HardDrive', iconComp: HardDrive, tech: 'Apache Iceberg / S3', subtitle: 'Parquet columnar warehouse' }
+    ]
+  },
+  lifecycle: {
+    title: 'State Machine States',
+    boundaryName: '+ Add State Machine Lane',
+    items: [
+      { label: '[INITIAL_STATE]', role: 'state', shape: 'state', icon: 'Activity', iconComp: Activity, tech: 'Initial State', subtitle: 'Start of entity lifecycle' },
+      { label: '[PENDING / TRANSIENT]', role: 'state', shape: 'state', icon: 'Shield', iconComp: Shield, tech: 'Transient State', subtitle: 'Awaiting webhook or event' },
+      { label: '[ACTIVE / PROCESSING]', role: 'state', shape: 'state', icon: 'Layers', iconComp: Layers, tech: 'Active State', subtitle: 'Normal processing state' },
+      { label: '[FAILED / ERROR]', role: 'state', shape: 'state', icon: 'Shield', iconComp: Shield, tech: 'Degraded State', subtitle: 'Exception or rejected guard' },
+      { label: '[TERMINAL / SETTLED]', role: 'state', shape: 'state', icon: 'Database', iconComp: Database, tech: 'Terminal State', subtitle: 'Closed immutable state' }
+    ]
+  }
+};
 
 interface Props {
+  currentDiagramType?: DiagramType;
   onAddNode: (item: PaletteItem) => void;
   onAddBoundary: () => void;
 }
 
-export const ComponentPalette: React.FC<Props> = ({ onAddNode, onAddBoundary }) => {
+export const ComponentPalette: React.FC<Props> = ({ 
+  currentDiagramType = 'architecture',
+  onAddNode, 
+  onAddBoundary 
+}) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<DiagramType>(currentDiagramType);
   const [search, setSearch] = useState('');
 
-  const filtered = PALETTE_ITEMS.filter(item => 
+  // Sync tab if diagram type changes from outside
+  React.useEffect(() => {
+    setActiveTab(currentDiagramType);
+  }, [currentDiagramType]);
+
+  const currentPalette = PALETTES_BY_TYPE[activeTab] || PALETTES_BY_TYPE.architecture;
+
+  const filtered = currentPalette.items.filter(item => 
     item.label.toLowerCase().includes(search.toLowerCase()) ||
     item.tech.toLowerCase().includes(search.toLowerCase()) ||
     item.role.toLowerCase().includes(search.toLowerCase())
@@ -71,7 +137,7 @@ export const ComponentPalette: React.FC<Props> = ({ onAddNode, onAddBoundary }) 
         <div className="w-8 h-[1px] bg-slate-800 my-1" />
 
         <div className="flex-1 overflow-y-auto space-y-2 py-1 flex flex-col items-center w-full px-1">
-          {PALETTE_ITEMS.map((item, idx) => {
+          {currentPalette.items.map((item, idx) => {
             const Icon = item.iconComp;
             return (
               <div
@@ -98,7 +164,7 @@ export const ComponentPalette: React.FC<Props> = ({ onAddNode, onAddBoundary }) 
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Components
+              Palette
             </h3>
             <span className="text-[10px] text-sky-400 font-mono">Drag / Click</span>
           </div>
@@ -110,13 +176,31 @@ export const ComponentPalette: React.FC<Props> = ({ onAddNode, onAddBoundary }) 
             <PanelLeftClose className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Diagram Type Quick Switcher Tabs */}
+        <div className="grid grid-cols-5 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg mb-2.5">
+          {(['architecture', 'workflow', 'sequence', 'dataflow', 'lifecycle'] as DiagramType[]).map((type) => (
+            <button
+              key={type}
+              onClick={() => setActiveTab(type)}
+              className={`py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all truncate text-center ${
+                activeTab === type
+                  ? 'bg-sky-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title={`Switch palette to ${type}`}
+            >
+              {type.slice(0, 3)}
+            </button>
+          ))}
+        </div>
         
         {/* Search Input */}
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
           <input
             type="text"
-            placeholder="Filter components..."
+            placeholder={`Filter ${activeTab} elements...`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-900/90 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
@@ -132,11 +216,11 @@ export const ComponentPalette: React.FC<Props> = ({ onAddNode, onAddBoundary }) 
           className="w-full flex items-center gap-2.5 p-2 rounded-lg border border-dashed border-sky-500/40 bg-sky-500/5 hover:bg-sky-500/10 text-sky-300 text-xs font-medium transition-all group"
         >
           <Box className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
-          <span>+ Add VPC / Zone Boundary</span>
+          <span>{currentPalette.boundaryName}</span>
         </button>
 
         <div className="pt-2 text-[10px] uppercase font-bold text-slate-500 tracking-wider px-1">
-          Building Blocks
+          {currentPalette.title}
         </div>
 
         {filtered.map((item, idx) => {

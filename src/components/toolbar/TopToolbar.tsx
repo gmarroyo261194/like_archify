@@ -3,7 +3,7 @@ import {
   Code2, Download, Moon, Sun, RotateCcw, 
   BookOpen, FolderOpen, Edit3, Check, Cloud
 } from 'lucide-react';
-import { PresetType, ThemeType } from '../../types/archify';
+import { PresetType, ThemeType, DiagramType } from '../../types/archify';
 
 interface Props {
   projectTitle: string;
@@ -15,8 +15,9 @@ interface Props {
   onOpenProjectsModal: () => void;
   onOpenJsonModal: () => void;
   onOpenExportModal: () => void;
-  onLoadTemplate: (templateKey: 'web' | 'ai' | 'micro') => void;
+  onLoadTemplate: (templateKey: 'web' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle') => void;
   onResetCanvas: () => void;
+  diagramType?: DiagramType;
   isSaving?: boolean;
 }
 
@@ -32,6 +33,7 @@ export const TopToolbar: React.FC<Props> = ({
   onOpenExportModal,
   onLoadTemplate,
   onResetCanvas,
+  diagramType = 'architecture',
   isSaving = false
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -132,24 +134,41 @@ export const TopToolbar: React.FC<Props> = ({
             <BookOpen className="w-3.5 h-3.5 text-sky-400" />
             <span>Templates</span>
           </button>
-          <div className="absolute top-full left-0 mt-1 w-48 bg-[#111726] border border-[#1e293b] rounded-xl shadow-2xl p-1.5 hidden group-hover:block z-50">
+          <div className="absolute top-full left-0 mt-1 w-56 bg-[#111726] border border-[#1e293b] rounded-xl shadow-2xl p-1.5 hidden group-hover:block z-50">
             <button
               onClick={() => onLoadTemplate('web')}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-between"
             >
-              🌐 3-Tier Web App
+              <span>🌐 3-Tier Web App</span>
+              <span className="text-[9px] font-mono text-slate-500 uppercase">Arch</span>
             </button>
             <button
-              onClick={() => onLoadTemplate('ai')}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+              onClick={() => onLoadTemplate('workflow')}
+              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-between"
             >
-              🤖 Multi-Agent Workflow
+              <span>🤖 AI Agent Cycle</span>
+              <span className="text-[9px] font-mono text-slate-500 uppercase">Workflow</span>
             </button>
             <button
-              onClick={() => onLoadTemplate('micro')}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+              onClick={() => onLoadTemplate('sequence')}
+              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-between"
             >
-              ⚡ Financial Event-Bus
+              <span>🔐 OAuth2 & JWT</span>
+              <span className="text-[9px] font-mono text-slate-500 uppercase">Sequence</span>
+            </button>
+            <button
+              onClick={() => onLoadTemplate('dataflow')}
+              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-between"
+            >
+              <span>⚡ Vector Dataflow</span>
+              <span className="text-[9px] font-mono text-slate-500 uppercase">Data</span>
+            </button>
+            <button
+              onClick={() => onLoadTemplate('lifecycle')}
+              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-between"
+            >
+              <span>🔄 State Machine</span>
+              <span className="text-[9px] font-mono text-slate-500 uppercase">Life</span>
             </button>
           </div>
         </div>

@@ -31,7 +31,10 @@ import {
   getAllProjects, saveProject, 
   getActiveProjectId, setActiveProjectId 
 } from './lib/storage/projectStorage';
-import { TEMPLATE_WEB_APP, TEMPLATE_AI_AGENT, TEMPLATE_MICROSERVICES } from './lib/templates/defaultTemplates';
+import { 
+  TEMPLATE_WEB_APP, TEMPLATE_WORKFLOW, TEMPLATE_SEQUENCE, 
+  TEMPLATE_DATAFLOW, TEMPLATE_LIFECYCLE 
+} from './lib/templates/defaultTemplates';
 
 function irToCanvas(ir: ArchifyDiagramIR): { nodes: Node[]; edges: Edge[] } {
   const boundaryNodes: Node[] = (ir.boundaries || []).map(b => ({
@@ -59,6 +62,7 @@ function irToCanvas(ir: ArchifyDiagramIR): { nodes: Node[]; edges: Edge[] } {
       label: n.label,
       subtitle: n.subtitle,
       role: n.role,
+      shape: n.shape || 'box',
       icon: n.icon || 'Server',
       tech: n.tech,
       port: n.port,
@@ -96,7 +100,8 @@ function irToCanvas(ir: ArchifyDiagramIR): { nodes: Node[]; edges: Edge[] } {
 function canvasToIR(
   nodes: Node[],
   edges: Edge[],
-  meta: ArchifyDiagramIR['meta']
+  meta: ArchifyDiagramIR['meta'],
+  diagramType: ArchifyDiagramIR['diagram_type'] = 'architecture'
 ): ArchifyDiagramIR {
   const boundaries = nodes
     .filter(n => n.type === 'boundaryNode')
@@ -118,11 +123,13 @@ function canvasToIR(
       label: (n.data?.label as string) || 'Service',
       subtitle: n.data?.subtitle as string | undefined,
       role: ((n.data?.role as string) || 'service') as NodeRole,
+      shape: (n.data?.shape as any) || 'box',
       tech: n.data?.tech as string | undefined,
       icon: n.data?.icon as string | undefined,
       port: n.data?.port as string | number | undefined,
       status: n.data?.status as string | undefined,
       git_url: n.data?.gitUrl as string | undefined,
+      metadata: n.data?.metadata as Record<string, string> | undefined,
       position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }
     }));
 
@@ -138,7 +145,7 @@ function canvasToIR(
 
   return {
     schema_version: '2.0.0',
-    diagram_type: 'architecture',
+    diagram_type: diagramType,
     meta: {
       ...meta,
       updated_at: new Date().toISOString()
@@ -179,8 +186,8 @@ export function App() {
   const isInitialMount = useRef(true);
 
   const currentIR = useMemo(() => {
-    return canvasToIR(nodes, edges, { ...meta, preset, theme });
-  }, [nodes, edges, meta, preset, theme]);
+    return canvasToIR(nodes, edges, { ...meta, preset, theme }, activeProject.diagram_type || 'architecture');
+  }, [nodes, edges, meta, preset, theme, activeProject.diagram_type]);
 
   // Real-Time Auto-Save to LocalStorage
   useEffect(() => {
@@ -202,7 +209,7 @@ export function App() {
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [nodes, edges, meta, preset, theme, activeProject.id]);
+  }, [nodes, edges, meta, preset, theme, activeProject.id, activeProject.diagram_type]);
 
   const selectedNode = useMemo(() => {
     const found = nodes.find(n => n.id === selectedNodeId);
@@ -295,6 +302,7 @@ export function App() {
         label: item.label,
         subtitle: item.subtitle,
         role: item.role,
+        shape: item.shape || 'box',
         icon: item.icon,
         tech: item.tech,
         status: 'healthy',
@@ -356,6 +364,7 @@ export function App() {
         label: item.label,
         subtitle: item.subtitle,
         role: item.role,
+        shape: item.shape || 'box',
         icon: item.icon,
         tech: item.tech,
         status: 'healthy',
@@ -539,9 +548,34 @@ export function App() {
     document.documentElement.classList.toggle('light', newTheme === 'light');
   }, [theme]);
 
-  const handleLoadTemplate = useCallback((key: 'web' | 'ai' | 'micro') => {
-    const tpl = key === 'web' ? TEMPLATE_WEB_APP : key === 'ai' ? TEMPLATE_AI_AGENT : TEMPLATE_MICROSERVICES;
+  const handleLoadTemplate = useCallback((key: 'web' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle') => {
+    let tpl = TEMPLATE_WEB_APP;
+    let newDiagramType: ArchifyDiagramIR['diagram_type'] = 'architecture';
+
+    if (key === 'web') {
+      tpl = TEMPLATE_WEB_APP;
+      newDiagramType = 'architecture';
+    } else if (key === 'workflow') {
+      tpl = TEMPLATE_WORKFLOW;
+      newDiagramType = 'workflow';
+    } else if (key === 'sequence') {
+      tpl = TEMPLATE_SEQUENCE;
+      newDiagramType = 'sequence';
+    } else if (key === 'dataflow') {
+      tpl = TEMPLATE_DATAFLOW;
+      newDiagramType = 'dataflow';
+    } else if (key === 'lifecycle') {
+      tpl = TEMPLATE_LIFECYCLE;
+      newDiagramType = 'lifecycle';
+    }
+
     const { nodes: newNodes, edges: newEdges } = irToCanvas(tpl);
+    setActiveProject(p => ({
+      ...p,
+      title: tpl.meta.title,
+      diagram_type: newDiagramType,
+      ir: tpl
+    }));
     setMeta(tpl.meta);
     setPreset(tpl.meta.preset);
     setNodes(newNodes);
@@ -591,6 +625,7 @@ export function App() {
         onOpenExportModal={() => setIsExportModalOpen(true)}
         onLoadTemplate={handleLoadTemplate}
         onResetCanvas={handleResetCanvas}
+        diagramType={activeProject.diagram_type || currentIR.diagram_type}
         isSaving={isSaving}
       />
 
@@ -598,6 +633,7 @@ export function App() {
       <div className="flex-1 flex overflow-hidden relative" ref={containerRef}>
         {/* Left Component Palette */}
         <ComponentPalette
+          currentDiagramType={activeProject.diagram_type || currentIR.diagram_type}
           onAddNode={handleAddNode}
           onAddBoundary={handleAddBoundary}
         />
