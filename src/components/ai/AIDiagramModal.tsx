@@ -186,8 +186,8 @@ export const AIDiagramModal: React.FC<AIDiagramModalProps> = ({
                   onChange={(e) => setProvider(e.target.value as any)}
                   className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
                 >
+                  <option value="gemini">Google Gemini (Flash / Pro)</option>
                   <option value="groq">Groq (Llama 3.3 70B)</option>
-                  <option value="gemini">Google Gemini (1.5 Flash)</option>
                   <option value="openai">OpenAI (GPT-4o mini)</option>
                 </select>
                 <input

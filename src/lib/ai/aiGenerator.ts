@@ -79,7 +79,7 @@ async function callLLMApi(
 
   const model = config.model || (
     config.provider === 'groq' ? 'llama-3.3-70b-versatile' :
-    config.provider === 'gemini' ? 'gemini-1.5-flash' :
+    config.provider === 'gemini' ? 'gemini-2.5-flash' :
     'gpt-4o-mini'
   );
 
