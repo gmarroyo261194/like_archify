@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Code2, Download, Moon, Sun, RotateCcw, 
-  BookOpen, FolderOpen, Edit3, Check, Cloud
+  BookOpen, FolderOpen, Edit3, Check, Cloud,
+  Sparkles, Layout
 } from 'lucide-react';
 import { PresetType, ThemeType, DiagramType } from '../../types/archify';
 
@@ -15,6 +16,8 @@ interface Props {
   onOpenProjectsModal: () => void;
   onOpenJsonModal: () => void;
   onOpenExportModal: () => void;
+  onOpenAIModal: () => void;
+  onAutoLayout: () => void;
   onLoadTemplate: (templateKey: 'web' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle') => void;
   onResetCanvas: () => void;
   diagramType?: DiagramType;
@@ -31,6 +34,8 @@ export const TopToolbar: React.FC<Props> = ({
   onOpenProjectsModal,
   onOpenJsonModal,
   onOpenExportModal,
+  onOpenAIModal,
+  onAutoLayout,
   onLoadTemplate,
   onResetCanvas,
   diagramType = 'architecture',
@@ -109,8 +114,30 @@ export const TopToolbar: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Center Controls: Presets + Templates */}
+      {/* Center Controls: AI Generator + Presets + Templates */}
       <div className="flex items-center gap-2">
+        {/* AI Architect Action Button */}
+        <button
+          onClick={onOpenAIModal}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-bold shadow-md shadow-cyan-500/10 transition-all group"
+          title="Generate Architecture with AI"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
+          <span>AI Architect</span>
+        </button>
+
+        {/* Auto Layout Button */}
+        <button
+          onClick={onAutoLayout}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white text-xs font-medium transition-all"
+          title="Auto-organize graph layout"
+        >
+          <Layout className="w-3.5 h-3.5 text-sky-400" />
+          <span className="hidden md:inline">Auto Layout</span>
+        </button>
+
+        <div className="h-4 w-[1px] bg-slate-800 mx-0.5" />
+
         {/* Preset Selector */}
         <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-xl p-1 gap-1">
           {(['signal-flow', 'blueprint', 'classic', 'minimal'] as PresetType[]).map((p) => (

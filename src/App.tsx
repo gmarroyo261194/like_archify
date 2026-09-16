@@ -19,6 +19,7 @@ import { ArchifyProject, ProjectDiagram } from './types/project';
 import { TopToolbar } from './components/toolbar/TopToolbar';
 import { DiagramTabBar } from './components/toolbar/DiagramTabBar';
 import { NewDiagramModal } from './components/toolbar/NewDiagramModal';
+import { AIDiagramModal } from './components/ai/AIDiagramModal';
 import { ComponentPalette } from './components/sidebar/ComponentPalette';
 import { NodeInspector } from './components/inspector/NodeInspector';
 import { EdgeInspector } from './components/inspector/EdgeInspector';
@@ -28,6 +29,7 @@ import { DiagramCanvas } from './components/canvas/DiagramCanvas';
 import { ExportModal } from './components/export/ExportModal';
 import { JsonEditorModal } from './components/code/JsonEditorModal';
 import { ProjectsModal } from './components/projects/ProjectsModal';
+import { getAutoLayoutedElements } from './lib/layout/autoLayout';
 
 import { 
   getAllProjects, saveProject, 
@@ -187,6 +189,7 @@ export function App() {
 
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [isNewDiagramModalOpen, setIsNewDiagramModalOpen] = useState(false);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTracingActive, setIsTracingActive] = useState(false);
@@ -194,6 +197,33 @@ export function App() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
+
+  const handleAutoLayout = useCallback(() => {
+    const layouted = getAutoLayoutedElements(
+      nodes as Node<ArchifyNodeData>[],
+      edges as Edge<ArchifyEdgeData>[],
+      { direction: 'LR', nodeSpacing: 60, rankSpacing: 100 }
+    );
+    setNodes([...layouted.nodes]);
+    setEdges([...layouted.edges]);
+  }, [nodes, edges, setNodes, setEdges]);
+
+  const handleApplyAIDiagram = useCallback((generatedIR: ArchifyDiagramIR) => {
+    const { nodes: rawNodes, edges: rawEdges } = irToCanvas(generatedIR);
+    const layouted = getAutoLayoutedElements(
+      rawNodes as Node<ArchifyNodeData>[],
+      rawEdges as Edge<ArchifyEdgeData>[],
+      { direction: 'LR', nodeSpacing: 60, rankSpacing: 100 }
+    );
+
+    setMeta(generatedIR.meta);
+    if (generatedIR.meta.preset) setPreset(generatedIR.meta.preset);
+    setNodes(layouted.nodes);
+    setEdges(layouted.edges);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    confetti({ particleCount: 70, spread: 60, origin: { y: 0.5 } });
+  }, [setNodes, setEdges]);
 
   const currentIR = useMemo(() => {
     return canvasToIR(nodes, edges, { ...meta, preset, theme }, activeDiagram.diagram_type);
@@ -777,6 +807,8 @@ export function App() {
         onOpenProjectsModal={() => setIsProjectsModalOpen(true)}
         onOpenJsonModal={() => setIsJsonModalOpen(true)}
         onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenAIModal={() => setIsAIModalOpen(true)}
+        onAutoLayout={handleAutoLayout}
         onLoadTemplate={handleLoadTemplate}
         onResetCanvas={handleResetCanvas}
         diagramType={activeDiagram.diagram_type}
@@ -880,6 +912,14 @@ export function App() {
         isOpen={isNewDiagramModalOpen}
         onClose={() => setIsNewDiagramModalOpen(false)}
         onAddDiagram={handleAddDiagram}
+      />
+
+      {/* AI Architect Generator Modal */}
+      <AIDiagramModal
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        onGenerate={handleApplyAIDiagram}
+        currentDiagramType={activeDiagram.diagram_type}
       />
 
       {/* JSON IR Editor Modal */}
